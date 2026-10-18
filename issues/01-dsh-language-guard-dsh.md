@@ -83,12 +83,20 @@
 - [x] #04 决策：设置面板与快速语言切换的交互设计（依赖 #03）
 - [x] #05 调研：语言漂移的机制根因与 section order 的精确落点
 - [x] #06 决策：B/C/D 三档机制与配置 schema（依赖 #05、#02）
-- [ ] #07 决策：GitHub 建仓与 npm 发布的执行清单（依赖 #09）
-- [ ] #08 决策：中英双语 README 与验证文档结构（依赖 #06、#04）
+- [x] #07 决策：GitHub 建仓与 npm 发布的执行清单（依赖 #09）
+- [x] #08 决策：中英双语 README 与验证文档结构（依赖 #06、#04）
 - [x] #09 决策：包结构与 manifest 规范（依赖 #06）
-- [ ] #10 实现：dsh-language-guard 插件 Host 半与 Client 半
+- [x] #10 实现：dsh-language-guard 插件 Host 半与 Client 半
 
-当前状态：地图 open；子票 9 张，已关闭 6 张（#02、#03、#04、#05、#06、#09），未关闭 3 张（#07 发布决策、#08 文档决策、#10 实现）；依赖边共 8 条（7 条原生 block 边 + 1 条 #10 的 parent 边）。执行由 AgentTeams 团队「中文语言守卫插件开发组」承接：实现已完成落盘（14 个文件，`npm pack --dry-run` 通过），待补 README 双语与发布准备。
+当前状态：地图 open；子票 9 张，**全部关闭**（#02–#10）；依赖边共 8 条（7 条原生 block 边 + 1 条 #10 的 parent 边）。
+
+执行由 AgentTeams 团队「中文语言守卫插件开发组」承接（6 名成员、11 个任务）。落地结果：
+
+- 插件已实现并落盘 14 个文件，`npm pack --dry-run` 通过（`entryCount: 14`，39.3 kB）。
+- 验收脚本 `scripts/verify-checklist.sh` 54 项 PASS / 0 FAIL / 0 TODO，退出码 0。
+- 已开源：<https://github.com/58fly/dsh-language-guard>（public、MIT、8 个 topic）。
+- npm 已 publish-ready（`npm publish --dry-run` 退出码 0），**真实 `npm publish` 留给用户执行**（本机 npm 未登录，且凭据不经 agent 手）。
+- 未能本机自证的两项（桌面应用内实装、`dsh` CLI 安装路径）已在验收清单中如实标注「未验证 + 环境限制原因」。
 
 Status: ready-for-agent
 Type: map
