@@ -4,15 +4,17 @@
 
 ## Destination
 
-发布一个完全符合 DSH 插件规范的独立 npm 包 `dsh-language-guard`，开源到 GitHub `58fly/dsh-language-guard`，让用户能把模型的**思考过程与回复语言锁定为指定语言**（默认简体中文），不再出现「规定中文却漂移成英文或反复切换」。
+发布一个完全符合 DSH 插件规范的独立插件包 `dsh-language-guard`，开源到 GitHub `58fly/dsh-language-guard`，让用户能把模型的**思考过程与回复语言锁定为指定语言**（默认简体中文），不再出现「规定中文却漂移成英文或反复切换」。
+
+> **分发方式变更（后续定案）**：npm registry 未发布——出口 IP 被 Cloudflare 风控，注册页 403、命令行注册通道已被 npm 关闭。改为 **GitHub 分发**（插件管理器原生支持 Git 地址），功能无损失。详见 `docs/发布说明.md` 第一节。
 
 成功的样子：
 
-- `dsh plugin add dsh-language-guard` 一条命令可装，装完立即生效，无需重启 DSH。
+- `dsh plugin add https://github.com/58fly/dsh-language-guard` 一条命令可装（或固定版本 `github:58fly/dsh-language-guard#v0.1.0`），装完立即生效，无需重启 DSH。
 - 提供三档强度（基础 / 强化 / 周期），用户在 Web 插件面板里选择，每档有中文说明。
 - 面板支持快速语言切换，UI 符合 DSH Desktop 主题规范（只用 `--dsw-alias-*` token，不引 Client primitives）。
 - README 中英双语，含机制说明与「如何自证约束真的进了 system prompt」的验证步骤。
-- `npm pack` 与 `npm publish --dry-run` 全绿，publish-ready。
+- `npm pack` 14 文件 / 40011 B；Git 安装三种 spec 形式实测通过；`npm publish --dry-run` 全绿（保留为将来可选的发布路径）。
 
 ## Notes
 

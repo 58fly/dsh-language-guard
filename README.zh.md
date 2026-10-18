@@ -88,23 +88,36 @@ DSH 的 system prompt 由许多 section 拼装而成：身份、计划策略、�
 
 ## 安装
 
+本插件通过 **GitHub 仓库**分发，尚未发布到 npm registry。插件管理器接受 Git 地址，装法与装 npm 包完全一样。
+
 **方式一：图形界面（推荐）**
 
 1. 打开侧栏的**插件**页。
-2. 点**添加插件**，输入 `dsh-language-guard`（包名就是 `dsh plugin add` 后面的那一段）。
+2. 点**添加插件**，粘贴仓库地址：
+
+   ```
+   https://github.com/58fly/dsh-language-guard
+   ```
+
 3. 安装完成后点**立即启用**。
 
 **方式二：命令行**
 
 ```bash
-dsh plugin add dsh-language-guard
+dsh plugin add https://github.com/58fly/dsh-language-guard
 ```
 
-**从本地目录安装**（发布前试用，或调试本地改动）：
+**固定版本**（团队或 CI 推荐，不跟随 `main` 漂移）：
+
+```bash
+dsh plugin add "github:58fly/dsh-language-guard#v0.1.0"
+```
+
+**从本地目录安装**（调试本地改动，路径必须是绝对路径）：
 
 ```bash
 # 「添加插件」对话框同样接受这个绝对路径
-dsh plugin add /Volumes/data/dsh-cn-think
+dsh plugin add /absolute/path/to/dsh-language-guard
 ```
 
 怎么确认装上了：
@@ -114,7 +127,7 @@ dsh plugin add /Volumes/data/dsh-cn-think
 
 > **看不到任何控件，就是插件没启用。** 两个 slot 都注册在 `configForms.whileServed(['dsh-language-guard'], …)` 内部；插件被禁用时表单服务不可用，不会注册任何界面。这是有意为之，不是 bug——先去插件页启用它。
 
-环境要求：DSH `>= 0.2.1-rc.2`，Node `^22.19.0 || >=24.0.0`。`dependencies` 为空，peer 依赖全部 optional，离线可装。
+环境要求：DSH `>= 0.2.1-rc.2`，Node `^22.19.0 || >=24.0.0`。`dependencies` 为空、peer 依赖全部 optional，所以运行时不需要额外下载依赖；但首次从 GitHub 安装时需要能访问 `github.com`（或 `codeload.github.com`）。
 
 ## 三档强度
 

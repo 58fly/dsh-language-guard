@@ -27,6 +27,10 @@ Labels: wayfinder:task
 
 ## Comments
 
+### local — 2026-10-18T17:40:19.356Z
+后续变更：分发方式由 npm 改为 GitHub。本文 Answer 中记录的「`dsh plugin add dsh-language-guard`」与「输入包名」两处安装说明已过时——npm registry 未发布（出口 IP 被 Cloudflare 风控，注册页 403、命令行注册通道已被 npm 关闭）。README 中英双语已改为 `dsh plugin add https://github.com/58fly/dsh-language-guard`，并给出固定版本形式 `github:58fly/dsh-language-guard#v0.1.0`；本地目录示例也由写死的本机路径改为 `/absolute/path/to/dsh-language-guard`。详见 `docs/发布说明.md` 第一节与第三节。
+
+
 ## Answer
 
 ### 一、交付物与实测尺寸

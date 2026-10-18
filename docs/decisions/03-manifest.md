@@ -94,7 +94,7 @@ node_modules/
 
 | 字段 | 值 | 为什么必须是这个值 |
 |---|---|---|
-| `name` | `"dsh-language-guard"` | 团队目标指定的开源包名；不带 scope，`npm install dsh-language-guard` 可直接装。实测 `https://registry.npmjs.org/dsh-language-guard` 返回 404，未被占用 |
+| `name` | `"dsh-language-guard"` | 团队目标指定的开源包名；不带 scope，`npm install dsh-language-guard` 可直接装。实测 `https://registry.npmjs.org/dsh-language-guard` 返回 404，未被占用。**注（后续定案）**：实际分发走 GitHub Git 地址，npm registry 未发布（出口 IP 被 Cloudflare 风控，见 `docs/发布说明.md` 第一节）；包名仍保持无 scope，便于将来恢复 npm 发布 |
 | `version` | `"0.1.0"` | 首个可发布版本。`0.x` 表示 API 未冻结（Config 字段还可能加），符合 SemVer |
 | `description` | 见第 3 节原文 | npm 搜索与 `locale` 缺失时的兜底文案；英文，≤ 200 字符 |
 | `type` | `"module"` | 宿主以 ESM 加载插件；CJS 会让 `export function apply` 直接语法错误 |

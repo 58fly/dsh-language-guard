@@ -88,23 +88,36 @@ The opening section (head), verbatim, as it looks with the default `targetLangua
 
 ## Install
 
+This plugin is distributed through its **GitHub repository**; it is not published to the npm registry. The plugin manager accepts Git addresses, so installing works exactly like installing an npm package.
+
 **Option 1: the GUI (recommended)**
 
 1. Open the **Plugins** panel in the sidebar.
-2. Click **Add plugin** and enter `dsh-language-guard` (the package name is exactly what follows `dsh plugin add`).
+2. Click **Add plugin** and paste the repository address:
+
+   ```
+   https://github.com/58fly/dsh-language-guard
+   ```
+
 3. When the install finishes, click **Enable now**.
 
 **Option 2: the CLI**
 
 ```bash
-dsh plugin add dsh-language-guard
+dsh plugin add https://github.com/58fly/dsh-language-guard
 ```
 
-**From a local directory** (before publishing, or to try local changes):
+**Pinned version** (recommended for teams and CI, so `main` cannot drift under you):
+
+```bash
+dsh plugin add "github:58fly/dsh-language-guard#v0.1.0"
+```
+
+**From a local directory** (to debug local changes; the path must be absolute):
 
 ```bash
 # The Add-plugin dialog also accepts this absolute path directly
-dsh plugin add /Volumes/data/dsh-cn-think
+dsh plugin add /absolute/path/to/dsh-language-guard
 ```
 
 Check that it worked:
@@ -114,7 +127,7 @@ Check that it worked:
 
 > **No controls visible means the plugin is not enabled.** Both slots register inside `configForms.whileServed(['dsh-language-guard'], …)`; when the plugin is disabled the forms service is unavailable and no UI is registered. That is deliberate, not a bug — enable the plugin on the Plugins page first.
 
-Requirements: DSH `>= 0.2.1-rc.2`, Node `^22.19.0 || >=24.0.0`. `dependencies` is empty and every peer dependency is optional, so installation works offline.
+Requirements: DSH `>= 0.2.1-rc.2`, Node `^22.19.0 || >=24.0.0`. `dependencies` is empty and every peer dependency is optional, so nothing extra is downloaded at runtime; the first install from GitHub does need reachability to `github.com` (or `codeload.github.com`).
 
 ## Strength levels
 
