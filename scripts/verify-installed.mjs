@@ -93,36 +93,59 @@ if (systems.length === 0) {
 
 console.log(`system/message 节点数: ${systems.length}\n`);
 
-let lastNew = null;
-let anyOld = false;
+const lastIndex = systems.length - 1;
 for (const [i, s] of systems.entries()) {
   const oldHits = OLD_MARKS.filter((m) => s.text.includes(m));
   const newHits = NEW_MARKS.filter((m) => s.text.includes(m));
-  if (oldHits.length > 0) anyOld = true;
-  const tag =
-    newHits.length > 0 ? `本插件 ${newHits.length}/3` : '本插件 0/3';
-  const oldTag = oldHits.length > 0 ? `  ⚠ 旧方案残留 ${oldHits.length}/2` : '';
+  const tag = newHits.length > 0 ? `本插件 ${newHits.length}/3` : '本插件 0/3';
+  // 只有「最新节点」能代表当前装配结果；更早的节点是历史快照，
+  // 它们带着旧方案文本是正常的（那时还没重启），不能算「残留」。
+  const isLatest = i === lastIndex;
+  const oldTag =
+    oldHits.length === 0
+      ? ''
+      : isLatest
+        ? `  ⚠ 旧方案仍在生效 ${oldHits.length}/2`
+        : `  （历史节点，含旧方案 ${oldHits.length}/2）`;
   console.log(
     `#${i} turn=${s.turn ?? '?'} step=${s.step ?? '?'} 长度=${s.text.length}  ${tag}${oldTag}`,
   );
-  if (newHits.length > 0) lastNew = { index: i, hits: newHits.length, length: s.text.length };
 }
 
-console.log('\n=== 结论 ===');
-if (anyOld) {
-  console.log('✗ 日志里仍有旧方案（dsh-context promptPrefix/promptSuffix）的文本。');
+// 判定只看最新节点：它才是重启后真正装配出来的 system prompt。
+const latest = systems[lastIndex];
+const latestOld = OLD_MARKS.filter((m) => latest.text.includes(m));
+const latestNew = NEW_MARKS.filter((m) => latest.text.includes(m));
+
+console.log('\n=== 结论（依据最新节点 #' + lastIndex + '）===');
+
+if (latestOld.length > 0) {
+  console.log('✗ 最新节点里仍有旧方案（dsh-context promptPrefix/promptSuffix）的文本。');
   console.log('  说明清理没有生效：确认 desktop profile 的 cordis.patch.yml 里已无 dsh-context 的');
   console.log('  promptPrefix / promptSuffix，且 DSH 已重启（本机 HMR 被禁用，改 patch 必须重启）。');
 } else {
-  console.log('✓ 日志里没有旧方案的文本。');
+  console.log('✓ 最新节点里没有旧方案的文本，清理已生效。');
 }
 
-if (lastNew === null) {
-  console.log('· 本插件尚未生效：三段标记一个都没有。');
+if (latestNew.length === 0) {
+  console.log('· 本插件尚未生效：最新节点里三段标记一个都没有。');
   console.log('  插件没装、没启用，或装完还没重启。');
 } else {
-  console.log(`✓ 本插件生效：最近一个带标记的节点是 #${lastNew.index}，命中 ${lastNew.hits}/3 段，长度 ${lastNew.length}。`);
-  if (lastNew.hits < 3) {
+  console.log(
+    `✓ 本插件生效：最新节点命中 ${latestNew.length}/3 段，长度 ${latest.text.length}。`,
+  );
+  if (latestNew.length < 3) {
     console.log('  少于 3 段属正常：只有「基础」档是 2 段（head+tail），「强化」「周期」是 3 段。');
   }
+  // 顺带报出三段在文本里的位置，用来证明首/中/尾的顺序是对的。
+  const positions = latestNew.map((m) => latest.text.indexOf(m));
+  console.log(`  三段位置：${positions.join(' / ')}（应递增）`);
+  const ascending = positions.every((p, k) => k === 0 || p > positions[k - 1]);
+  console.log(`  顺序${ascending ? '正确' : '异常（不是首→中→尾）'}`);
+}
+
+if (systems.length > 1) {
+  console.log(
+    `\n注：更早的 ${systems.length - 1} 个节点是重启前的历史快照，保留旧文本属正常，不计入判定。`,
+  );
 }
