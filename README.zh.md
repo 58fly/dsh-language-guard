@@ -267,6 +267,22 @@ sys.forEach((o, i) => {
 - **切换语言**：从侧栏菜单选「日本語」，发一条消息，新 system 节点读作「一律使用日本語（语言代码 ja）」。
 - **停用插件**：停用后没有 section、没有注入，新 system 节点报 `三段命中=0/3`。这是干净的回退，不是残留。
 
+### 一键自检
+
+上面这些手工步骤可以合并成一条命令：
+
+```bash
+node scripts/verify-installed.mjs
+```
+
+它会自动找最近写入的会话日志、解压、统计每个 `system/message` 节点的长度与三段命中数，并直接给出两个结论：**旧方案（dsh-context 的 promptPrefix/promptSuffix）是否还有残留**、**本插件是否生效**。也接受显式路径：
+
+```bash
+node scripts/verify-installed.mjs ~/.dsh/sessions/<项目>/<会话>/session.v4.jsonl.zstd
+```
+
+需要系统里有 `zstd` 命令（macOS：`brew install zstd`）。
+
 ## 与 dsh-context 共存
 
 第三方插件 `dsh-context` 注册的 `promptPrefix` / `promptSuffix` 两段，order 与本插件的**完全撞值**（`-2000` 与 `11200`）。

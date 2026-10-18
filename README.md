@@ -267,6 +267,22 @@ The new system node should report `sections=2/3` — the missing one is `【语�
 - **Switching language**: pick 日本語 from the sidebar menu, send a message, and the new system node reads "一律使用日本語（语言代码 ja）".
 - **Disabling the plugin**: with the plugin disabled there are no sections and no injections; the new system node reports `sections=0/3`. That is a clean fallback, not a leftover.
 
+### One-command check
+
+The manual steps above collapse into a single command:
+
+```bash
+node scripts/verify-installed.mjs
+```
+
+It locates the most recently written session log, decompresses it, reports the length and section hits of every `system/message` node, and prints two verdicts: **whether a legacy dsh-context promptPrefix/promptSuffix is still present**, and **whether this plugin is in effect**. An explicit path also works:
+
+```bash
+node scripts/verify-installed.mjs ~/.dsh/sessions/<project>/<session>/session.v4.jsonl.zstd
+```
+
+Requires the `zstd` command on your PATH (macOS: `brew install zstd`).
+
 ## Coexisting with dsh-context
 
 The third-party plugin `dsh-context` registers `promptPrefix` / `promptSuffix` sections whose order values **collide exactly** with this plugin's (`-2000` and `11200`).
