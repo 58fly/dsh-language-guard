@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "中文语言守卫",
+    "description": "强制模型用简体中文思考与回复：基础 / 强化 / 周期三档强度、可配置的约束落点、周期性自检提醒，并支持 /language 快速切换。若同时安装 dsh-context，建议清空它的 promptPrefix / promptSuffix —— 它注入的 section 与本插件同序，会重复消耗 token。"
+  }
+}

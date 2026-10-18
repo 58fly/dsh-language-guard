@@ -1,0 +1,83 @@
+{
+  "name": "dsh-language-guard",
+  "version": "0.1.0",
+  "description": "Enforce Simplified Chinese reasoning and replies in DeepSeek Harness: three strength levels, configurable prompt sections, periodic reminders, a settings panel with a quick language switch.",
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "icon": "icon.svg",
+  "files": [
+    "lib",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "README.zh.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0",
+    "dsh": ">=0.2.1-rc.2"
+  },
+  "dsh": {
+    "manifestVersion": 1,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-plugin-manager"
+      ]
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": ">=4.0.5",
+    "@deepseek-ai/dsh-llm": ">=0.2.1-rc.2",
+    "@deepseek-ai/schemastery": ">=3.18.2"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/cordis": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-llm": {
+      "optional": true
+    },
+    "@deepseek-ai/schemastery": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "chinese",
+    "language",
+    "locale",
+    "system-prompt",
+    "i18n"
+  ],
+  "author": "58fly",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/58fly/dsh-language-guard.git"
+  },
+  "homepage": "https://github.com/58fly/dsh-language-guard#readme",
+  "bugs": {
+    "url": "https://github.com/58fly/dsh-language-guard/issues"
+  }
+}

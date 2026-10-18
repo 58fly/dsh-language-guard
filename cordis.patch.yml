@@ -1,0 +1,19 @@
+# dsh-language-guard 的 bundle patch 层。
+#
+# 这一行把本包的主入口（exports["."]）挂成一个宿主插件。
+# 这里故意不写 config：所有 Config 字段都有 schema 默认值，
+# 改配置的正确位置是设置面板，或用户自己的 profile patch 层。
+#
+# 要在自己的 profile patch 里覆盖，必须重述整个 config ——
+# patch 对 config 是整体替换，不做深合并：
+#
+#   - id: dsh-language-guard
+#     name: dsh-language-guard
+#     config:
+#       targetLanguage: zh-CN
+#       strength: C
+#       injectEveryNRounds: 8
+#
+- insert:
+    - id: dsh-language-guard
+      name: dsh-language-guard
