@@ -13,11 +13,18 @@
 
 | 档位 | 键 | 中文名 | 英文名 | 组成 | 相对成本 |
 |---|---|---|---|---|---|
-| 基础 | `B` | 基础 | Basic | head + tail 两段常驻 | 约 670 字符/步（head 556 + tail 113） |
-| 强化 | `C` | 强化 | Strong | head + mid + tail 三段常驻 | 约 790 字符/步（比 B 多 mid 的 118） |
-| 周期 | `D` | 周期 | Periodic | C 档三段 + 每 N 轮在 `agent/pre-step` 追加一条提醒消息 | 约 790 字符/步 + 每 N 轮约 100 字符（提醒正文 99 字符） |
+| 基础 | `B` | 基础 | Basic | head + tail 两段常驻 | 约 665 字符/步（head 552 + tail 113） |
+| 强化 | `C` | 强化 | Strong | head + mid + tail 三段常驻 | 约 783 字符/步（比 B 多 mid 的 118） |
+| 周期 | `D` | 周期 | Periodic | C 档三段 + 每 N 轮在 `agent/pre-step` 追加一条提醒消息 | 约 783 字符/步 + 每 N 轮约 99 字符（提醒正文 99 字符） |
 
-> 上表数字为 `lib/text.js` 实测字符数（`zh-CN`、`preserveCodeTerms: true`、无 `extraRules`）。早期版本此处写的是估算值 200/350/110，与实现不符，已按实测更正；验收时以本表为准。
+> 上表数字为 `lib/text.js` 实测字符数（`headText({ language: 'zh-CN', preserveCodeTerms: true })`、无 `extraRules`/`overrideHead`）。复算命令：
+> ```bash
+> node --input-type=module -e 'import("./lib/text.js").then(m=>{const a=m.headText({language:"zh-CN"}),b=m.midText({language:"zh-CN"}),c=m.tailText({language:"zh-CN"}),d=m.reminderText({language:"zh-CN"});console.log(a.length,b.length,c.length,d.length)})'
+> # → 552 118 113 99
+> ```
+> **注意**：`headText` 的形参名是 `language`，不是 `targetLanguage`（后者是 Config 字段名）。传错参数名会让 `⟨LANG⟩` 占位符未被替换，得到「语言代码 undefined」且长度变成 556——这是本条曾出现 556 与 552 两个数字的原因，**552 才是正确值**。
+>
+> 早期版本此处写的是估算值 200/350/110，与实现不符，已按实测更正；验收时以本表为准。
 
 默认档位：**`C`（强化）**。默认目标语言：**`zh-CN`（简体中文）**。
 
