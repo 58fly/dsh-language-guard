@@ -94,15 +94,17 @@
 - [x] #09 决策：包结构与 manifest 规范（依赖 #06）
 - [x] #10 实现：dsh-language-guard 插件 Host 半与 Client 半
 
-当前状态：地图 open；子票 9 张，**全部关闭**（#02–#10）；依赖边共 8 条（7 条原生 block 边 + 1 条 #10 的 parent 边）。
+当前状态：地图 open；子票 9 张，**全部关闭**（#02–#10）；依赖边共 8 条（7 条原生 block 边 + 1 条 #10 的 parent 边）；地图快照 `open 0 / closed 9 / frontier 0 / blocked 0`。
 
-执行由 AgentTeams 团队「中文语言守卫插件开发组」承接（6 名成员、11 个任务）。落地结果：
+执行由 AgentTeams 团队「中文语言守卫插件开发组」承接（6 名成员、11 个任务，状态 `deliverable / Delivery: ok`）。落地结果：
 
-- 插件已实现并落盘 14 个文件，`npm pack --dry-run` 通过（`entryCount: 14`，39.3 kB）。
-- 验收脚本 `scripts/verify-checklist.sh` 54 项 PASS / 0 FAIL / 0 TODO，退出码 0。
-- 已开源：<https://github.com/58fly/dsh-language-guard>（public、MIT、8 个 topic）。
-- npm 已 publish-ready（`npm publish --dry-run` 退出码 0），**真实 `npm publish` 留给用户执行**（本机 npm 未登录，且凭据不经 agent 手）。
-- 未能本机自证的两项（桌面应用内实装、`dsh` CLI 安装路径）已在验收清单中如实标注「未验证 + 环境限制原因」。
+- 插件已实现并落盘 14 个文件，`npm pack --dry-run` 通过（`entryCount: 14` / `size: 40011` / `unpackedSize: 118648`）。
+- 验收脚本 `scripts/verify-checklist.sh` **58 项 PASS / 0 FAIL / 0 TODO**，退出码 0。
+- 已开源并打 tag：<https://github.com/58fly/dsh-language-guard>（public、MIT、8 个 topic、`v0.1.0` 已 push）。
+- **分发方式最终定案为 GitHub**（不是 npm registry）：出口 IP 被 Cloudflare 风控导致注册页 403，且 npm 已关闭命令行注册通道。Git 安装三种 spec 形式实测通过，`files` 白名单在 Git 安装时同样生效（只拉 14 个运行时文件）。`npm publish --dry-run` 仍全绿，保留为将来可选的发布路径。
+- 本机 profile 已实装并**重启后复验通过**：最新 `system/message` 节点长度 15116，三段命中 3/3，落点 0 / 12251 / 15005 递增；旧方案（dsh-context 的 promptPrefix/promptSuffix）已清理且探针消失。
+- 环境侧附带修复：本机 profile 的 `pnpm-workspace.yaml` 里两条 Git spec 形式的 `allowBuilds` 键会让任何 `pnpm install` 报 `ERR_PNPM_INVALID_VERSION_UNION`，已删除并记录在 `docs/发布说明.md` 第二节补记。
+- 仍未本机自证的：桌面应用内 `dsh plugin add` 图形安装路径、`dsh` CLI 安装路径、浏览器渲染类检查（本机无 `dsh` CLI、内嵌 Electron 不可用），已在 `docs/验收清单.md` 与 `docs/评审报告.md` 如实标注「未验证 + 环境限制原因」，未标为通过。
 
 Status: ready-for-agent
 Type: map
