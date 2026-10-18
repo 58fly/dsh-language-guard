@@ -52,20 +52,24 @@
 
 - 采用**首尾夹击**（order `-2000` + `11200`）作为基础档，而非竞品的单点 `order:50` —— 直接针对已观测到的漂移现象。
 - 放弃 `system-prompt/assemble` waterfall 方案（官方 practices.md 禁止），强化档改为**多个不同 name 的 section** 分布在 `-2000` / `5100` / `11200`（`5100` 是对初版 `5000` 的修正：`tools:sdk` 的 order 恰为 5000，而 `comparePromptSections`（`dsh-system-prompt/lib/index.js:101-103`）在 order 相同时按 name 的 code-unit 字典序排，`"language-guard:mid" < "tools:sdk"` 会让中段重申落到数千字 SDK 文档之前而失效）。
-- D 档（周期提醒）用 `agent.inject()` 实现，**不用** `agent/pre-step` 改 messages，以保住「Model-visible ⟺ logged」不变式。
-- 设置面板走 `settings` 服务（宿主渲染，自动符合 desktop 风格），只有「快速语言切换」控件需要自己在 `conversation.composer.dock` slot 里画。
+- ~~D 档（周期提醒）用 `agent.inject()` 实现，不用 `agent/pre-step` 改 messages~~ —— **本条已被 #02 推翻，见下方修正**。
+- ~~设置面板走 `settings` 服务（宿主渲染，自动符合 desktop 风格），只有「快速语言切换」控件需要自己在 `conversation.composer.dock` slot 里画~~ —— **本条已被 #03 推翻，见下方修正**。
 - npm 发布由用户执行，agent 只做到 publish-ready。
-- **#05（已关闭）**：语言漂移的根因是「位置即权重」——`dsh-llm/lib/index.js:87-95` 把全部 section 拼成**一条** `role:"system"` 消息，模型看不到 section 边界，只能按文本顺序感受权重。故 `-2000`（内置最小常量 -1000 之前）与 `11200`（最大常量 10200 之后）是最优落点，实测分别位于 offset 0 与全篇末段。另：section 的 `context` 参数只有 `{agent, scope, signal}`、**没有轮次**，且 `assemble` 每 **step** 调用一次（`dsh-agent-loop/lib/index.js:907`），所以周期档不能靠 section 计数（单位会是 step 而非 turn），必须走 `agent.inject()`。
-- **#06（已关闭）**：三档定案为 B 基础（head+tail）/ C 强化（head+mid+tail，**默认档**）/ D 周期（C 三段 + 每 N 轮 `agent.inject()`，N 默认 8、范围 3–50）；section 名固定为 `language-guard:head`(-2000) / `language-guard:mid`(5100) / `language-guard:tail`(11200)，**一次性注册、永不 dispose**，切档只切 `text()` 返回值（返回 `""` 即被 `renderPrompt` 的 filter 丢弃）；全部 `interpolate: false` 用 JS 模板替换占位符，避免用户 `extraRules` 里的 `{{` 让整个装配抛错；配置用 `@deepseek-ai/schemastery` 的 6 个逐字段 `.volatile()`（不得加在根对象上），**不引 zod**。
+- **#05（已关闭）**：语言漂移的根因是「位置即权重」——`dsh-llm/lib/index.js:87-95` 把全部 section 拼成**一条** `role:"system"` 消息，模型看不到 section 边界，只能按文本顺序感受权重。故 `-2000`（内置最小常量 -1000 之前）与 `11200`（最大常量 10200 之后）是最优落点，实测分别位于 offset 0 与全篇末段。另：section 的 `context` 参数只有 `{agent, scope, signal}`、**没有轮次**，且 `assemble` 每 **step** 调用一次（`dsh-agent-loop/lib/index.js:907`），所以周期档不能靠 section 计数（单位会是 step 而非 turn）。
+- **#06（已关闭）**：三档定案为 B 基础（head+tail）/ C 强化（head+mid+tail，**默认档**）/ D 周期（C 三段 + 每 N 轮提醒，N 默认 8、范围 3–50）；section 名固定为 `language-guard:head`(-2000) / `language-guard:mid`(5100) / `language-guard:tail`(11200)，**一次性注册、永不 dispose**，切档只切 `text()` 返回值（返回 `""` 即被 `renderPrompt` 的 filter 丢弃）；全部 `interpolate: false` 用 JS 模板替换占位符，避免用户 `extraRules` 里的 `{{` 让整个装配抛错；配置用 `@deepseek-ai/schemastery` 的 6 个逐字段 `.volatile()`（不得加在根对象上），**不引 zod**。
+- **#02（已关闭，推翻上面第 1 条）**：D 档最终走 `agent/pre-step` waterfall 改写 `decision.messages`，**不是** `agent.inject()`。理由：官方 `practices.md:16` 明确允许改写且要求 spread；先例 `dsh-agent-instructions/lib/index.js:1406-1424` 同样做法；`agent/pre-step` 载荷自带 `turn` 与 `step`（`dsh-agent-loop/lib/index.js:956-958` 的 `this.preStep(target, { turn, step })`，`:911` 用 `...position` 展开），故「每 N 轮」可直接判定，**无需自建计数器**；改写后的 messages 落 `user/message` 日志（`dsh-agent-loop/lib/index.js:1072`），满足「Model-visible ⟺ logged」。而 `agent.inject()` 是 `send(input, "next-step", false)`（`:812-814`），**不唤醒**，idle 时注入会一直躺在 inbox。三条硬约束：必须 `await next()` 先取决策、`kind === "reject"` 原样返回、`{...decision, messages}` spread 保住 `startsRequestSeries`。风险：无条件注入会让 `inbox.hasPending` 永真、`turn()` 在 `:1033-1037` 无限续跑，故必须 `step === 1 && turn % N === 0` 门禁 + 幂等判断。
+- **#03 / #04（已关闭，推翻上面第 2 条）**：**安装树里没有「schema→控件」自动表单渲染器**。`autoGenerate` 只在 `dsh-settings`（5 处透传）与协议 zod 描述里出现，web-frontend index bundle 中 0 次；官方 `plugin-manager/README.zh.md:14、:71-73` 明确「配置页由插件自己在插件页渲染，设置里只保留只读插件列表」。故本插件**必须带 client 半身**：配置页注册 `plugins.bundle.config`（key = 包名 `dsh-language-guard`，`ownerProps` 为 `{view: 'summary'|'page', form}`）；快速语言切换注册 `sidebar.footer.action`（id `language-guard`、order 100、`ownerProps` 为 `{wide}`），**不是** `conversation.composer.dock`。三档控件用原生 radio group 三行卡片（不用 select，因 select 只能显示当前档说明），说明文字常驻档名下方（不用 tooltip）。写入链路：Client `configForms.get(entryId).set(k,v)` → Host `Settings.write` → Loader 判定「只有 volatile 变」→ 原地替换 `fiber._config` + `_commitVolatile` + emit `loader/volatile-update`，**不 remount**，故无需重启即生效。
 
 ## Not yet specified
 
-- 三档的精确文案与面板上的中文说明措辞。
-- 语言候选清单（简体中文 / 繁体中文 / English / 日本語 / 한국어 … 还是自由输入 BCP-47 码）。
-- 默认档位取 B 还是 C。
-- D 档的「每 N 轮」具体 N 值与是否随会话长度自适应。
-- 图标设计（需要一个 ≤256KiB 的 SVG）。
-- 版本号起点（0.1.0 还是 1.0.0）与 license 之外是否加 `funding`/`bugs` 字段。
+（无。原 6 条待定项已在 #02–#09 中全部确定，逐条结论如下，已并入上方 `## Decisions so far`：）
+
+- ~~三档的精确文案与面板上的中文说明措辞~~ → 定案：文案唯一真源为 `docs/decisions/01-mechanism.md` 2.1 节；面板文案在 `client.js` 内联 `{zh, en}` 字典（NS `languageGuard`），说明常驻档名下方。
+- ~~语言候选清单~~ → 定案：**5 个预设 + 任意合法 BCP-47**。`zh-CN` / `zh-TW` / `en` / `ja` / `ko` 进快速菜单与设置页 chip；自定义码只在设置页文本框（正则与 schema 同一条）。不做封闭枚举，否则会把 schema 已支持的 `fr`/`de` 变成不可用。
+- ~~默认档位取 B 还是 C~~ → 定案：**C（强化）**。
+- ~~D 档的 N 值与是否随会话长度自适应~~ → 定案：**N 默认 8，范围 3–50，不自适应**（自适应需要状态，会引入跨会话不一致）。
+- ~~图标设计~~ → 定案：`icon.svg`，367 字节，远低于 256 KiB 上限。
+- ~~版本号起点与 license 之外是否加 `funding`/`bugs` 字段~~ → 定案：起点 **`0.1.0`**（不是 1.0.0，API 仍可能调整）；`bugs` **加**（指向 GitHub issues）；`funding` **不加**。
 
 ## Out of scope
 
