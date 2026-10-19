@@ -10,12 +10,12 @@
 
 成功的样子：
 
-- `dsh plugin add https://github.com/58fly/dsh-language-guard` 一条命令可装（或固定版本 `github:58fly/dsh-language-guard#v0.1.2`）。**装插件本身需重启一次 DSH**（profile 组合包变更）；装好之后在面板里改档位、改目标语言**不需要重启**，下一条消息即生效。
+- `dsh plugin add https://github.com/58fly/dsh-language-guard` 一条命令可装（或固定版本 `github:58fly/dsh-language-guard#v0.2.0`）。**装插件本身需重启一次 DSH**（profile 组合包变更）；装好之后在面板里改档位、改目标语言**不需要重启**，下一条消息即生效。
 - 显示名为「语言守卫 / Language Guard」，中英两版同义对译，不绑定任何具体语言（0.1.2 定案；0.1.1 及之前误叫「中文语言守卫」）。
 - 提供三档强度（基础 / 强化 / 周期），用户在 Web 插件面板里选择，每档有中文说明。
 - 面板支持快速语言切换，UI 符合 DSH Desktop 主题规范（只用 `--dsw-alias-*` token，不引 Client primitives）。
 - README 中英双语，含机制说明与「如何自证约束真的进了 system prompt」的验证步骤。
-- `npm pack` 14 文件 / 41240 B；Git 安装三种 spec 形式实测通过；`npm publish --dry-run` 全绿（保留为将来可选的发布路径）。
+- `npm pack` 15 文件 / 53870 B / 解包 164792 B；Git 安装三种 spec 形式实测通过；`npm publish --dry-run` 全绿（保留为将来可选的发布路径）。
 
 ## Notes
 
@@ -83,7 +83,7 @@
 
 ## 任务清单
 
-<!-- 13 条，与本 map 的 13 张子票一一对齐；阻塞关系以建边工具落下的原生依赖边为准，此处只作索引。 -->
+<!-- 15 条，与本 map 的 15 张子票一一对齐；阻塞关系以建边工具落下的原生依赖边为准，此处只作索引。 -->
 
 - [x] #02 调研：D 档周期提醒的 agent.inject 合规实现
 - [x] #03 调研：DSH Desktop 设置面板与快速语言切换的官方实现范式
@@ -96,18 +96,31 @@
 - [x] #10 实现：dsh-language-guard 插件 Host 半与 Client 半
 - [x] #11 缺陷：选择目标语言后「没有任何改变」（0.1.1 已修复）
 - [x] #12 缺陷：插件显示名「中文语言守卫」与通用语言锁定器定位不符（0.1.2 已改名为「语言守卫 / Language Guard」）
-- [ ] #13 调研：自动识别语言环境的信号来源与 BCP-47 映射规则
-- [ ] #14 实现：自动语言模式（识别语言环境，自动选择目标语言）（依赖 #13）
+- [x] #13 调研：自动识别语言环境的信号来源与 BCP-47 映射规则
+- [x] #14 实现：自动语言模式（识别语言环境，自动选择目标语言）（依赖 #13）
+- [x] #15 缺陷：client.js 镜像段缺 resolveTargetLanguage 且 resolveSource 未转发 defaultLanguage（评审 O1/O3，0.2.0 已修）
+- [x] #16 缺陷：发布说明第十一节 0.1.1 的 pack 尺寸被 0.1.2 覆盖（评审 O2，0.2.0 已修）
 
-当前状态：地图 open；子票 13 张，已关闭 11 张（#02–#12），未关闭 2 张（#13 可接、#14 被 #13 阻塞）；依赖边共 12 条（8 条原生 block 边 + #10、#11、#12、#13、#14 各 1 条 parent 边）。
+当前状态：地图 open；子票 15 张，**全部关闭**（#02–#16）；依赖边共 14 条（8 条原生 block 边 + #10–#16 各 1 条 parent 边）。0.2.0 已完成并发布：`tag v0.2.0` 已 push，评审 `pass`（`docs/评审报告-0.2.0.md`），验收 `73 PASS / 0 FAIL / 0 TODO`，`npm pack` 15 文件 / 53870 B / 解包 164792 B。
 
 **0.2.0 新增需求（用户 2026-10-19 提出）**：自动识别当前语言环境、语言模式自动选择。已澄清定案：识别信号=界面语言为主、系统语言兜底；只自动选目标语言；自动/手动两态、默认自动。拆为 #13 调研 + #14 实现。
 
 执行由 AgentTeams 团队「中文语言守卫插件开发组」承接（6 名成员、11 个任务，状态 `deliverable / Delivery: ok`）。落地结果：
 
 - 插件已实现并落盘 14 个文件，`npm pack --dry-run` 通过（`entryCount: 14` / `size: 41240` / `unpackedSize: 124132`）。
-- 验收脚本 `scripts/verify-checklist.sh` **59 项 PASS / 0 FAIL / 0 TODO**，退出码 0（新增 F19：约束文本必须点名 AGENTS.md）。
-- 已开源并打 tag：<https://github.com/58fly/dsh-language-guard>（public、MIT、8 个 topic；`v0.1.0` 与 `v0.1.1` 均已 push）。
+- 验收脚本 `scripts/verify-checklist.sh` **73 项 PASS / 0 FAIL / 0 TODO**，退出码 0（0.2.0 起新增 M1–M13 自动模式判据、R23 文档尺寸判据）。
+- 已开源并打 tag：<https://github.com/58fly/dsh-language-guard>（public、MIT、8 个 topic；`v0.1.0`、`v0.1.1`、`v0.1.2`、`v0.2.0` 均已 push）。
+
+**0.2.0 落地结果（2026-10-19）**：自动语言模式已完成并发布。
+
+- 新增 `lib/language.js`（151 行纯函数，无 import）：`normalizeLocaleId` / `mapPreference` / `effectiveMode` / `resolveTargetLanguage` / `resolveSource`。
+- Config 由 6 字段增至 **7 字段**：新增 `languageMode`（`'' | 'auto' | 'manual'`，默认空串），全部逐字段 `.volatile()`。
+- 三态设计的关键取舍：默认**空串**而非 `'auto'`，否则 schema 会抹掉「用户没设过」的信息，老用户手选 `targetLanguage: ja` 会被界面语言 `zh` 静默覆盖成 `zh-CN`（破坏性升级）。判定规则：`''` + `targetLanguage === 'zh-CN'` → auto；`''` + 其他值 → **manual**（保护老用户）。
+- 识别信号只走**界面语言**（`settings.describe()` 里 `ns === "locale"` 的 `value.preference`，官方 `dsh-electron` 主进程 `readLocalePreference()` 同款读法）。**没有系统语言这一档**——Host 侧拿不到可靠的 OS 语言信号（`Intl.DateTimeFormat().resolvedOptions().locale` 在本机实测返回 `en-US`，系统实为中文，因 `LANG=C.UTF-8`；`require("electron")` 在 Host 进程不可用）。
+- 修掉一处 Client/Host 信号源分叉：Client 侧原读 `ctx.locale.getSnapshot().active`（浏览器派生值），与 Host 读的 `locale.preference`（显式偏好）在「从未选过界面语言」时必然不一致，会让面板显示「English」而实际注入中文。已统一为 `ctx.configForms.get('locale').getSnapshot().value.preference`。
+- 评审 `pass`（`docs/评审报告-0.2.0.md`），21 项依赖真实运行时/浏览器的条目如实标「未验证 + 环境限制原因」。
+- 已知限制（非本插件能解决）：DSH 界面语言只有简体中文与 English 两档，自动模式解析不到繁體中文 / 日本語 / 한국어，需手动选。
+
 - **分发方式最终定案为 GitHub**（不是 npm registry）：出口 IP 被 Cloudflare 风控导致注册页 403，且 npm 已关闭命令行注册通道。Git 安装三种 spec 形式实测通过，`files` 白名单在 Git 安装时同样生效（只拉 14 个运行时文件）。`npm publish --dry-run` 仍全绿，保留为将来可选的发布路径。
 - 本机 profile 已实装并**重启后复验通过**：最新 `system/message` 节点长度 15116，三段命中 3/3，落点 0 / 12251 / 15005 递增；旧方案（dsh-context 的 promptPrefix/promptSuffix）已清理且探针消失。
 - 环境侧附带修复：本机 profile 的 `pnpm-workspace.yaml` 里两条 Git spec 形式的 `allowBuilds` 键会让任何 `pnpm install` 报 `ERR_PNPM_INVALID_VERSION_UNION`，已删除并记录在 `docs/发布说明.md` 第二节补记。
