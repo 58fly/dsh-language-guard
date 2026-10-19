@@ -431,6 +431,21 @@ run_client M12 "hits 'configForms\\.get\\(UI_LOCALE_NS\\)' \${client} \
 # 判据用脚本独有的函数定义行，不用 shebang：清单里若引用 shebang 字样会自指 FAIL。
 chk M13 "! grep -q '^run_client()' docs/验收清单.md && ! grep -q '^m_tmp=' docs/验收清单.md"
 
+# M14：Client 镜像段与 lib/language.js 必须**运行时行为等价**。
+#      client.js 里的「语言模式常量与解析规则」是 lib/language.js 的手抄副本
+#      （Client 是独立 bundle，factory 只能 require('react')，不能相对 import 包内文件），
+#      抄两份就必须有判据守住一致性。此前这里是**零覆盖**：
+#        - scripts/verify-language.mjs 只 import lib/language.js，从不读 client.js；
+#        - M1 只比 mapPreference 的 zh/en 两条规则、M2 只比 effectiveMode 的三元式，
+#          都是源文本正则抽查，不是行为断言；
+#        - 于是把 client.js 的 MODE_MANUAL 改成 MODE_AUTO，全仓仍然绿。
+#      0.2.1 就因此漏过一处真实分叉：Host 用默认参数（只对 undefined 兜底），
+#      Client 用 `||`（对任何假值兜底），defaultLanguage 传 '' / null 时两侧判定相反。
+#      M14 跑 scripts/verify-mirror.mjs：把镜像段抽出来动态 import，与 lib/language.js
+#      在 MODES × LANGS × FALLBACKS × DEFAULTS 上逐条比输出（≥1 万组输入、5 个函数）。
+#      这是本仓库唯一真正守住镜像段一致性的判据，删掉它等于放任漂移。
+chk M14 "node scripts/verify-mirror.mjs"
+
 # ---- npm 产物判据（A7 / R1 / R2 / R16）------------------------------------
 # 一次 npm pack --dry-run 供 A7 / R1 共用，避免重复调用。
 # 所有 npm 调用都必须带 --cache 指向临时目录，否则本机 ~/.npm 的 root-owned 文件会 EPERM

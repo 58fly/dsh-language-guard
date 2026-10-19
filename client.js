@@ -50,14 +50,46 @@ window.__ModuleLoader__.load({
      * **本段是 `lib/language.js` 的逐条镜像**：Client 半是独立 bundle
      * （`window.__ModuleLoader__.load` 的 factory 只能 `require('react')`，
      * 不能相对 import 包内其他文件），因此无法直接复用 Host 侧的模块。
-     * 改这里的任何一条规则，必须同步改 `lib/language.js`，反之亦然；
-     * `scripts/verify-language.mjs` 用同一批用例断言 Host 侧行为，
-     * `scripts/verify-checklist.sh` 的 M1–M4 断言两侧规则文本一致。
+     * 改这里的任何一条规则，必须同步改 `lib/language.js`，反之亦然。
+     *
+     * 谁在守这份一致性（各管一段，别混淆）：
+     *
+     * - `scripts/verify-mirror.mjs`（清单里的 **M14**）：把本段从 `client.js`
+     *   抽出来做**运行时行为比对**，与 `lib/language.js` 在
+     *   `LANGS × MODES × FALLBACKS × DEFAULTS` 上逐条比输出，覆盖本段
+     *   全部 5 个函数（`normalizeLocaleId` / `mapPreference` / `effectiveMode` /
+     *   `resolveTargetLanguage` / `resolveSource`）。**这才是防漂移的主判据。**
+     * - `scripts/verify-checklist.sh` 的 **M1 / M2**：两侧**源文本**正则比对，
+     *   但只覆盖 `mapPreference` 的两条规则（zh / en）与 `effectiveMode` 的三元式，
+     *   是文本层面的抽查，不是行为断言。
+     * - 同脚本的 **M3** 是 Config 默认值、**M4** 是 radio group 结构，
+     *   都跟本段一致性无关。
+     * - `scripts/verify-language.mjs` 只 import `lib/language.js`，断言的是
+     *   **Host 侧**行为，从不读 `client.js`。
      */
     const MODE_AUTO = 'auto';
     const MODE_MANUAL = 'manual';
     const MODE_UNSET = '';
     const DEFAULT_LANGUAGE = 'zh-CN';
+
+    /**
+     * 精确镜像 Host 侧的默认参数语义 `defaultLanguage = 'zh-CN'`。
+     *
+     * **不能用 `||`，也不能用 `??`**：
+     *
+     * - `||` 对任何假值兜底 —— `''` / `null` 都会被换成 `'zh-CN'`；
+     * - `??` 对 `null` 与 `undefined` 兜底 —— `null` 会被换成 `'zh-CN'`；
+     * - JS 默认参数**只对 `undefined` 生效** —— `''` 与 `null` 原样传入。
+     *
+     * Host 的 `effectiveMode` / `resolveTargetLanguage` / `resolveSource` 用的正是
+     * 默认参数，所以这里必须只在 `undefined` 时兜底，否则 `defaultLanguage: null`
+     * 会让 Host 判 `manual` 而 Client 判 `auto` —— 正是 `verify-mirror.mjs`
+     * 的 `DEFAULTS` 维度要抓的那类分叉。
+     */
+    function pickDefaultLanguage(input) {
+      const given = input ? input.defaultLanguage : undefined;
+      return given === undefined ? DEFAULT_LANGUAGE : given;
+    }
 
     /** 归一化语言标识：去空白、下划线转连字符、校验 BCP-47 */
     function normalizeLocaleId(raw) {
@@ -79,7 +111,7 @@ window.__ModuleLoader__.load({
 
     /** 三态 → 两态（含「老用户手选过语言」迁移规则） */
     function effectiveMode(input) {
-      const defaultLanguage = (input && input.defaultLanguage) || DEFAULT_LANGUAGE;
+      const defaultLanguage = pickDefaultLanguage(input);
       const rawMode = input && typeof input.languageMode === 'string'
         ? input.languageMode.trim().toLowerCase()
         : '';
@@ -102,7 +134,7 @@ window.__ModuleLoader__.load({
      * 保证「老用户手选过语言」的迁移规则在任何调用点都生效。
      */
     function resolveTargetLanguage(input) {
-      const defaultLanguage = (input && input.defaultLanguage) || DEFAULT_LANGUAGE;
+      const defaultLanguage = pickDefaultLanguage(input);
       const base = normalizeLocaleId(input && input.fallback) ?? defaultLanguage;
       const effective = effectiveMode({
         languageMode: input && input.mode,
@@ -115,7 +147,7 @@ window.__ModuleLoader__.load({
 
     /** 解析来源：manual / ui / fallback */
     function resolveSource(input) {
-      const defaultLanguage = (input && input.defaultLanguage) || DEFAULT_LANGUAGE;
+      const defaultLanguage = pickDefaultLanguage(input);
       const mode = effectiveMode({
         languageMode: input && input.mode,
         targetLanguage: input && input.fallback,
