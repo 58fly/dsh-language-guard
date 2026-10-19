@@ -13,6 +13,7 @@
 - [Install](#install)
 - [Strength levels](#strength-levels)
 - [Configuration](#configuration)
+- [Automatic language mode](#automatic-language-mode)
 - [Settings panel and quick language switch](#settings-panel-and-quick-language-switch)
 - [The `/language` slash command](#the-language-slash-command)
 - [Verifying that the constraint reached the system prompt](#verifying-that-the-constraint-reached-the-system-prompt)
@@ -164,10 +165,11 @@ How to choose:
 
 ## Configuration
 
-Six fields, all `volatile` (a change takes effect immediately — no restart, no plugin remount):
+Seven fields, all `volatile` (a change takes effect immediately — no restart, no plugin remount):
 
 | Field | Type | Default | Range | Description |
 | --- | --- | --- | --- | --- |
+| `languageMode` | `"" \| "auto" \| "manual"` | `""` | tri-state enum, case-sensitive | Language mode. `"auto"` follows the interface language, `"manual"` pins `targetLanguage`, `""` means "never chosen" and is resolved by the migration rule below |
 | `targetLanguage` | `string` | `"zh-CN"` | a valid BCP-47 tag (`/^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$/`) | Target language. `zh-CN` Simplified Chinese, `zh-TW` Traditional Chinese, `en` English, `ja` Japanese, `ko` Korean; any other valid tag is used as-is |
 | `strength` | `"B" \| "C" \| "D"` | `"C"` | enum, case-sensitive | Strength level, see above |
 | `injectEveryNRounds` | `number` | `8` | 3–50, integer | How often the Periodic self-check is added. Only used at D; the control is disabled at other levels |
@@ -183,10 +185,60 @@ Configuration lives in the profile's `cordis.patch.yml`. **A patch replaces `con
 - id: dsh-language-guard
   name: dsh-language-guard
   config:
+    languageMode: auto
     targetLanguage: zh-CN
     strength: C
     injectEveryNRounds: 8
 ```
+
+## Automatic language mode
+
+`languageMode` decides where the target language comes from:
+
+| Mode | Behaviour |
+| --- | --- |
+| **Auto** | The target language follows the DSH **interface language**. Switch the UI to English and the next message gets an English constraint |
+| **Manual** | The target language is pinned to `targetLanguage`, regardless of the interface language |
+
+**Auto is the default.** A fresh install needs no configuration: a Simplified Chinese UI constrains Simplified Chinese, an English UI constrains English.
+
+### Resolution order
+
+Auto mode has exactly two sources, taken in order:
+
+1. **The interface language** (`preference` in the `locale` configuration) — the `Settings → General → Language` setting.
+2. **The `targetLanguage` value** (default `zh-CN`) — the fallback when the interface language is unavailable.
+
+Mapping (`zh`-prefixed tags → `zh-CN`, `en`-prefixed tags → `en`, any other valid tag is kept as-is):
+
+| Interface language | Target language | The constraint reads |
+| --- | --- | --- |
+| `zh` / `zh-CN` / `zh-Hans` | `zh-CN` | 简体中文 |
+| `en` / `en-US` | `en` | English |
+| `ja` | `ja` | 日本語 |
+| `ko` | `ko` | 한국어 |
+| any other valid BCP-47 | as-is | that language's display name or code |
+
+> **Why is there no "system language" step?** The Host half runs as an `ELECTRON_RUN_AS_NODE=1` child process: `require("electron")` throws `Cannot find module 'electron'`, and `Intl.DateTimeFormat().resolvedOptions().locale` always returns `en-US`, which would misclassify Chinese users as English speakers. **There is no reliable system-language signal on the Host side**, so the plugin neither guesses nor fabricates one.
+
+### Upgrading from 0.1.x
+
+If you had picked a `targetLanguage` by hand (say `ja`) and never touched `languageMode`, you stay in **manual** mode after the upgrade — the interface language never silently overrides your choice. The rule: `languageMode` empty **and** `targetLanguage` different from the default `zh-CN` → manual.
+
+Pick "Auto" in the settings card to follow the interface language instead. Once you have chosen explicitly, the migration rule never applies again.
+
+### Seeing what it resolved to
+
+The first control group in the settings card is the language mode; with "Auto" selected it spells out the current result and its source right below:
+
+```text
+Currently resolved to 简体中文
+from the interface language
+```
+
+When the source line says "from the interface language" it means the interface language **you explicitly picked in DSH settings**; if you never picked one it says "interface language not detected, using the configured value" rather than guessing from the browser or the OS — the Host and the settings card read the same value (`preference` of the `locale` namespace in `settings.describe()`), so what the panel shows is exactly what gets injected. The sidebar quick-switch button label shows the same state, e.g. "Auto, 简体中文".
+
+**Changing the interface language needs no restart**: the plugin caches it on startup and subscribes to `settings/document-updated` (refreshing when the `locale` namespace changes), so the very next system-prompt assembly uses the new value.
 
 ## Settings panel and quick language switch
 
@@ -196,12 +248,13 @@ Path: **sidebar Plugins → installed plugins → `dsh-language-guard`**. The co
 
 The card, top to bottom:
 
-1. **Strength** — three radio rows (`fieldset` + same-named `radio`), all three descriptions visible side by side, with a "Recommended" badge on C. A radio group rather than a `<select>`, because the differences have to be comparable at a glance.
-2. **Injection interval (turns)** — a number input, 3–50, disabled with an explanation outside the Periodic level.
-3. **Target language** — a text field plus five preset chips (简体中文 / 繁體中文 / English / 日本語 / 한국어). Custom tags go straight into the field; it validates as you type and disables Save while invalid.
-4. **Keep code and technical terms verbatim** — a switch (`role="switch"` + `aria-checked`).
-5. **Additional rules** — a textarea with a local draft and Save / Discard changes.
-6. **Override the opening rules (advanced)** — collapsed by default. Editing it replaces the highest-priority constraint outright, so it stays out of the way.
+1. **Language mode** — two radios, Auto / Manual. With Auto selected it spells out "currently resolved to X" plus the source (interface language / configured value), and follows the interface language when you change it. In Auto mode the target-language control in item 3 is disabled.
+2. **Strength** — three radio rows (`fieldset` + same-named `radio`), all three descriptions visible side by side, with a "Recommended" badge on C. A radio group rather than a `<select>`, because the differences have to be comparable at a glance.
+3. **Injection interval (turns)** — a number input, 3–50, disabled with an explanation outside the Periodic level.
+4. **Target language** — a text field plus five preset chips (简体中文 / 繁體中文 / English / 日本語 / 한국어). Custom tags go straight into the field; it validates as you type and disables Save while invalid.
+5. **Keep code and technical terms verbatim** — a switch (`role="switch"` + `aria-checked`).
+6. **Additional rules** — a textarea with a local draft and Save / Discard changes.
+7. **Override the opening rules (advanced)** — collapsed by default. Editing it replaces the highest-priority constraint outright, so it stays out of the way.
 
 Every field has a "Reset to default" action (clears the user value back to the schema default).
 
@@ -213,7 +266,7 @@ At the foot of the sidebar, next to Settings (the `sidebar.footer.action` slot, 
 
 - Sidebar wide: icon + the language's own name + `▾`.
 - Sidebar collapsed to a 56px rail: icon only, with a complete `aria-label`.
-- Clicking opens a dropdown menu (not a cycle). The current entry is checked, the menu header reads "Current: X", and when the current value is not one of the five presets it shows the raw code with nothing checked.
+- Clicking opens a dropdown menu (not a cycle). The first entry is **Auto** (follow the interface language), followed by the five presets. The current entry is checked; in Auto mode the button label reads "Auto, X" and the Auto entry spells out "Currently auto-resolved to X". When the current value is not one of the five presets the raw code is shown with nothing checked.
 - Keyboard: Enter / Space opens, Escape closes and returns focus, ↑↓ moves through the menu.
 - A hint at the bottom of the menu points to the settings text field for other languages.
 
@@ -339,6 +392,9 @@ The two are **complementary, not competing**: one decides what language the mode
 - **It cannot detect whether `dsh-context` is installed**, so the hint is permanent (see above).
 - **Periodic never wakes an idle session.** `agent/pre-step` only fires while a turn is running, so no message means no reminder — a language guard should not generate conversation on its own.
 - **The `mid` position could be squeezed by future plugins.** If another plugin inserts a section between order `5000` and `9000`, the "after the tool docs" semantics get diluted. The fix then is to raise `mid` to `8900` (still before deliverable references at `9000`); failing that, fall back to Basic, which does not depend on `mid`.
+- **It cannot tell Simplified from Traditional Chinese.** DSH ships exactly two built-in interface languages, `zh` and `en` (`dsh-client-locale/lib/index.js:11`, `LOCALE_IDS = ["zh", "en"]`), and `zh` does not distinguish the two scripts — while the Host side cannot see the system language. So when the interface language is Chinese, auto mode always resolves to `zh-CN`. Users who need Traditional output should switch the language mode to Manual and pick `zh-TW`. The same holds for Japanese and Korean: on a standard install auto mode can only resolve to `zh-CN` or `en`, so pick 日本語 / 한국어 manually — if you installed the matching external language pack, its tag is passed through as-is.
+- **It does not follow the operating-system language.** The plugin reads the interface language you selected in DSH settings, not the OS language. DSH's Host process runs with `ELECTRON_RUN_AS_NODE=1`, so Electron's `app.getLocale()` is out of reach; Node's `Intl` in that process always reports `en-US`, which would misclassify Chinese users as English — so we chose not to use it.
+- **Auto mode follows the interface language, not the language you type in.** With a Simplified Chinese UI, asking in English still gets a Simplified Chinese constraint — that is the design: the plugin declares a default language, it does not guess from a single turn. Switch to Manual if you want it to track your input.
 - **Switching level changes the system prompt**, so DSH appends a new system node (an in-history replacement). That is a one-off token cost and expected behaviour.
 
 ## Design boundaries

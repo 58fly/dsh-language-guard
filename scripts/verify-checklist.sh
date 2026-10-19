@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# dsh-language-guard 验收自检脚本（对应 docs/验收清单.md 第四节的机械可判项）
+# dsh-language-guard 验收自检脚本（对应 docs/验收清单.md 第五节的机械可判项）
 #
 # 用法：在包根目录执行
 #   bash scripts/verify-checklist.sh; echo "exit=$?"
@@ -32,6 +32,7 @@ stub_dirs=""
 # path ~/.npm/_cacache/tmp/...）。指定到临时目录后 npm pack / publish --dry-run 均可用。
 npm_cache="${TMPDIR:-/tmp}/dsh-lg-npm-cache.$$"
 pack_tmp="${TMPDIR:-/tmp}/dsh-lg-pack.$$"
+m_tmp="${TMPDIR:-/tmp}/dsh-lg-mode.$$"
 
 cleanup() {
   if [ -n "${stub_dirs}" ]; then
@@ -227,7 +228,7 @@ run_lib C7 "hits \"ctx\\.on\\(['\\\"]agent/pre-step['\\\"]\" ${hostdir} \
 run_lib C8 "! hits 'setInterval' ${hostdir} || hits 'clearInterval' ${hostdir}"
 
 # C9：只数字段级调用（行首缩进 + `.volatile(),`），不把注释里的说明文字算进去。
-run_host C9 "[ \"\$(hits_n '^[[:space:]]*\.volatile\(\),' ${host})\" -eq 6 ] && python3 -c \"import yaml,sys;r=yaml.safe_load(open('cordis.patch.yml'))[0]['insert'][0];sys.exit(0 if set(r)=={'id','name'} else 1)\""
+run_host C9 "[ \"\$(hits_n '^[[:space:]]*\.volatile\(\),' ${host})\" -eq 7 ] && python3 -c \"import yaml,sys;r=yaml.safe_load(open('cordis.patch.yml'))[0]['insert'][0];sys.exit(0 if set(r)=={'id','name'} else 1)\""
 
 run_lib C10 "! hits 'appendPluginRecord|session\.append' ${hostdir}"
 run_both C11 "! hits 'querySelector|innerHTML' ${hostdir} ${client}"
@@ -315,13 +316,128 @@ run_client F6 "grep -q \"inject('sidebar.footer.action'\" ${client} \
 # 判据必须锁定到该字段本身：全局数 .volatile() 有 6 个，删掉任意一个都还有 5 个，会假通过。
 chk F15 "node -e \"const fs=require('fs');let src='';for(const f of fs.readdirSync('lib'))if(f.endsWith('.js'))src+=fs.readFileSync('lib/'+f,'utf8');const i=src.indexOf('injectEveryNRounds: z');if(i<0)process.exit(1);const j=src.indexOf('preserveCodeTerms:',i);const seg=src.slice(i,j>i?j:i+400);process.exit(seg.includes('.volatile()')&&/min\\(\\s*\\d/.test(seg)&&/max\\(\\s*\\d/.test(seg)?0:1)\""
 
+# ---- M. 自动语言模式（0.2.0，票 #14）----------------------------------------
+# M1：Host 与 Client 两侧的映射表必须一致（Client 是独立 bundle，无法 import 包内文件，
+#     只能镜像一份；镜像漂移是本功能最可能的静默失效点，所以必须机械比对）。
+chk M1 "node -e \"const fs=require('fs');const L=fs.readFileSync('lib/language.js','utf8');const C=fs.readFileSync('client.js','utf8');const pat=/if \\(primary === 'zh'\\) return 'zh-CN';\\s*\\n\\s*if \\(primary === 'en'\\) return 'en';/;process.exit(pat.test(L)&&pat.test(C)?0:1)\""
+
+# M2：三态迁移规则两侧一致（未设模式 + 非默认 targetLanguage → manual）。
+chk M2 "node -e \"const fs=require('fs');const L=fs.readFileSync('lib/language.js','utf8');const C=fs.readFileSync('client.js','utf8');const pat=/return target === defaultLanguage \\? MODE_AUTO : MODE_MANUAL/;process.exit(pat.test(L)&&pat.test(C)?0:1)\""
+
+# M3：Config 的 languageMode 默认值必须是空串（三态哨兵），不能是 'auto'。
+# 写成 'auto' 就无法区分「显式自动」与「从没设置过」，老用户手选的语言会被静默覆盖。
+# 判据体写成独立 .cjs（内联 -e 里的引号嵌套会被 bash 解析期吃掉，本脚本踩过这个坑）。
+mkdir -p "${m_tmp}" 2>/dev/null || true
+cat >"${m_tmp}/m3.cjs" <<'M3EOF'
+const fs = require('fs');
+const src = fs.readdirSync('lib').filter((f) => f.endsWith('.js'))
+  .map((f) => fs.readFileSync('lib/' + f, 'utf8')).join('');
+const i = src.indexOf('languageMode: z');
+if (i < 0) { console.log('缺 languageMode 字段'); process.exit(1); }
+const seg = src.slice(i, i + 400);
+const hasEmpty = seg.includes(".default('')");
+const hasVolatile = seg.includes('.volatile()');
+if (!hasEmpty || !hasVolatile) console.log('default 空串:', hasEmpty, ' volatile:', hasVolatile);
+process.exit(hasEmpty && hasVolatile ? 0 : 1);
+M3EOF
+chk M3 "node '${m_tmp}/m3.cjs'"
+
+# M4：设置卡片必须有模式 radio group（自动/手动），且自动态禁用语言输入。
+run_client M4 "grep -q \"name: 'language-guard-mode'\" \${client} \
+  && grep -q \"name: 'language-guard-strength'\" \${client} \
+  && hits 'disabled: readOnly \\|\\| auto' \${client}"
+
+# M5：快速切换菜单必须含「自动」项（不能只列 5 个预设，否则自动模式在侧栏无处可切）。
+run_client M5 "grep -q \"kind: 'auto'\" \${client} \
+  && grep -q 'quick.menu.auto' \${client}"
+
+# M6：section 的 text() 不得读盘。界面语言必须走 apply 期缓存 + 事件刷新，
+# 不能在每次装配时调 settings.describe（单次约 2–5 ms，且要遍历全部 entry 做 schema 投影）。
+chk M6 "node -e \"const fs=require('fs');const src=fs.readdirSync('lib').filter(f=>f.endsWith('.js')).map(f=>fs.readFileSync('lib/'+f,'utf8')).join('');const t=src.indexOf('ctx.systemPrompt.section');const seg=src.slice(t,t+2000);process.exit(/describe\\(/.test(seg)?1:0)\""
+
+# M7：Host 必须在 settings 服务可用后刷新界面语言缓存，并订阅 document-updated。
+run_lib M7 "hits 'settings/document-updated' \${hostdir} \
+  && hits 'refreshPreference' \${hostdir}"
+
+# M8：解析器单测必须存在且可跑（纯函数模块，不依赖 DSH 运行时）。
+chk M8 "[ -f scripts/verify-language.mjs ] && node scripts/verify-language.mjs >/dev/null"
+
+# M9：字典 zh / en 的键集合必须完全一致（漏一个键在英文界面就会显示 key 原文）。
+mkdir -p "${m_tmp}" 2>/dev/null || true
+cat >"${m_tmp}/m9.cjs" <<'M9EOF'
+const fs = require('fs');
+const src = fs.readFileSync('client.js', 'utf8');
+const zh = src.slice(src.indexOf('const zh = {'), src.indexOf('const en = {'));
+const en = src.slice(src.indexOf('const en = {'), src.indexOf('const CSS = `'));
+const keys = (block) => [...block.matchAll(/^\s+'([^']+)':/gm)].map((m) => m[1]);
+const zk = keys(zh); const ek = keys(en);
+const onlyZh = zk.filter((k) => !ek.includes(k));
+const onlyEn = ek.filter((k) => !zk.includes(k));
+if (onlyZh.length || onlyEn.length) console.log('仅 zh:', onlyZh.join(',') || '(无)', ' 仅 en:', onlyEn.join(',') || '(无)');
+process.exit(onlyZh.length || onlyEn.length ? 1 : 0);
+M9EOF
+chk M9 "node '${m_tmp}/m9.cjs'"
+
+# M10：自动态必须在卡片里显示「当前解析成哪种语言」，且要区分来源。
+#      0.1.0 的教训就是「点了没反应」，自动模式没有回显等于没做。
+run_client M10 "hits 'mode.current' \${client} \
+  && hits 'mode.source' \${client} \
+  && hits 'lg-mode-current' \${client}"
+
+# M11：README 中英两版结构必须对等（行数 / 二级章节 / 三级章节 / 代码块 / 表格行数一致）。
+#      两版是同一份内容的两种语言，任何一版单独加内容都会让另一版失去同步；
+#      人工逐节对照会漏（0.2.0 就漏过一次：中文版多两条已知限制，行数 414 vs 412），
+#      所以这里机械比对结构计数。
+cat >"${m_tmp}/m11.cjs" <<'M11EOF'
+const fs = require('fs');
+const stat = (file) => {
+  const text = fs.readFileSync(file, 'utf8');
+  const lines = text.split('\n');
+  const count = (re) => lines.filter((l) => re.test(l)).length;
+  return {
+    lines: lines.length - (lines[lines.length - 1] === '' ? 1 : 0),
+    h2: count(/^## /),
+    h3: count(/^### /),
+    fences: count(/^```/),
+    rows: count(/^\| /),
+  };
+};
+const en = stat('README.md');
+const zh = stat('README.zh.md');
+const keys = ['lines', 'h2', 'h3', 'fences', 'rows'];
+const diff = keys.filter((k) => en[k] !== zh[k]).map((k) => `${k}: en=${en[k]} zh=${zh[k]}`);
+if (diff.length) console.log(diff.join('  '));
+process.exit(diff.length ? 1 : 0);
+M11EOF
+chk M11 "node '${m_tmp}/m11.cjs'"
+
+# M12：Client 侧「界面语言」必须与 Host 同源（读 describe 镜像的 locale.preference），
+#      不许读 ctx.locale.getSnapshot().active。
+#      两者在「用户从未在设置里选过界面语言」时必然分叉：Host 拿到 undefined 走兜底
+#      targetLanguage（默认 zh-CN），而 active 是浏览器/系统语言派生的 provisional
+#      （dsh-client-locale/lib/client.js 的 resolveActive：preference === void 0 时返回
+#      provisional），英文系统用户会看到面板写「来自界面语言 · English」、实际注入简体中文。
+#      这条判据是那个缺陷的回归防护，删掉它等于允许面板撒谎。
+run_client M12 "hits 'configForms\\.get\\(UI_LOCALE_NS\\)' \${client} \
+  && hits 'UI_LOCALE_NS = .locale.' \${client} \
+  && hits 'preference' \${client} \
+  && ! hits 'locale\\.getSnapshot' \${client} \
+  && ! hits 'localeFace' \${client}"
+
+# M13：docs/验收清单.md 不得再嵌入脚本全文。
+#      0.2.0 期间清单里嵌入过脚本全文，随后脚本从 400 行长到 539 行，副本漂移 139 行
+#      而人工对照没发现——嵌入副本必然漂移。唯一真源是 scripts/verify-checklist.sh，
+#      清单只写判据文字与运行方式。这条判据防止有人再把全文粘回去。
+# 判据用脚本独有的函数定义行，不用 shebang：清单里若引用 shebang 字样会自指 FAIL。
+chk M13 "! grep -q '^run_client()' docs/验收清单.md && ! grep -q '^m_tmp=' docs/验收清单.md"
+
 # ---- npm 产物判据（A7 / R1 / R2 / R16）------------------------------------
 # 一次 npm pack --dry-run 供 A7 / R1 共用，避免重复调用。
 # 所有 npm 调用都必须带 --cache 指向临时目录，否则本机 ~/.npm 的 root-owned 文件会 EPERM
 # （npm error code EPERM / path ~/.npm/_cacache/tmp/...）。
 # 判据体写成独立 .cjs 文件而不是内联 -e：内联正则里一旦出现 `${}` 字面量，bash 会在解析期
 # 报 bad substitution，整条 chk 调用被跳过——既不 PASS 也不 FAIL，静默漏检（本脚本踩过）。
-mkdir -p "${npm_cache}" "${pack_tmp}" 2>/dev/null || true
+mkdir -p "${npm_cache}" "${pack_tmp}" "${m_tmp}" 2>/dev/null || true
 npm_ok=0
 if command -v npm >/dev/null 2>&1; then
   if npm pack --dry-run --json --cache "${npm_cache}" >"${pack_tmp}/pack.json" 2>"${pack_tmp}/pack.err"; then
@@ -361,7 +477,7 @@ const fs = require('fs');
 const got = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'))[0].files.map((f) => f.path).sort();
 const want = [
   'LICENSE', 'README.md', 'README.zh.md', 'client.js', 'cordis.patch.yml', 'icon.svg',
-  'lib/commands.js', 'lib/cycle.js', 'lib/index.js', 'lib/state.js', 'lib/text.js',
+  'lib/commands.js', 'lib/cycle.js', 'lib/index.js', 'lib/language.js', 'lib/state.js', 'lib/text.js',
   'locale/en.json', 'locale/zh.json', 'package.json',
 ];
 const miss = want.filter((x) => !got.includes(x));
@@ -386,17 +502,44 @@ if (a !== b) console.log('tar:', a, '\ndry:', b);
 process.exit(a === b ? 0 : 1);
 R2EOF
 
+cat >"${pack_tmp}/r23.cjs" <<'R23EOF'
+// R23：文档里声明的「当前 pack 尺寸」必须等于本次实测值。
+//      原因：README.md / README.zh.md 都在 files 白名单里，改一次 README 就让 size 变化，
+//      而文档里的数字是人手抄进去的——0.2.0 期间文档写 53284 B、实测已变 53657 B，
+//      差 373 B，人工对照没发现。凡在文档里写死产物尺寸，就必须由脚本守住。
+//
+//      判据用「必须包含实测值」而不是「不许出现别的数字」：文档里合法保留了历史版本的
+//      尺寸（0.1.0 的 40011、0.1.1 的 41221、0.1.2 的 41240），反向断言会把它们全判成错。
+//      正向断言只在「当前值没被写进文档」时失败，正是要防的那种漂移。
+const fs = require('fs');
+const actual = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'))[0];
+const need = [
+  { file: 'docs/发布说明.md', patterns: [actual.size + ' B', actual.unpackedSize + ' B'] },
+  { file: 'docs/实现说明.md', patterns: ['size: ' + actual.size, 'unpackedSize: ' + actual.unpackedSize] },
+];
+const bad = [];
+for (const item of need) {
+  if (!fs.existsSync(item.file)) { bad.push(item.file + ': 文件不存在'); continue; }
+  const text = fs.readFileSync(item.file, 'utf8');
+  for (const p of item.patterns) if (!text.includes(p)) bad.push(item.file + ': 缺 "' + p + '"');
+}
+if (bad.length) console.log('实测 entryCount=' + actual.entryCount + ' size=' + actual.size + ' unpackedSize=' + actual.unpackedSize + '\n  未同步：\n  ' + bad.join('\n  '));
+process.exit(bad.length ? 1 : 0);
+R23EOF
+
 if [ "${npm_ok}" = 1 ]; then
   # 传绝对路径：.cjs 在 ${pack_tmp} 里，require('./package.json') 会相对该目录解析而不是 cwd。
   chk A7 "node '${pack_tmp}/a7.cjs' '${pack_tmp}/pack.json' \"\$(pwd)/${pkg}\""
   chk R1 "node '${pack_tmp}/r1.cjs' '${pack_tmp}/pack.json'"
   chk R2 "npm pack --cache '${npm_cache}' --pack-destination '${pack_tmp}' >/dev/null 2>&1 && node '${pack_tmp}/r2.cjs' '${pack_tmp}'"
   chk R16 "npm publish --dry-run --cache '${npm_cache}' >'${pack_tmp}/pub.log' 2>&1; ! grep -q 'npm error' '${pack_tmp}/pub.log'"
+  chk R23 "node '${pack_tmp}/r23.cjs' '${pack_tmp}/pack.json'"
 else
   todo A7 "npm 不可用或 npm pack 失败（见 ${pack_tmp}/pack.err）"
   todo R1 "npm 不可用或 npm pack 失败"
   todo R2 "npm 不可用或 npm pack 失败"
   todo R16 "npm 不可用"
+  todo R23 "npm 不可用"
 fi
 
 # ---- R. 发布（机械可判部分） ------------------------------------------------
@@ -408,7 +551,7 @@ chk R10 "node -e \"const a=require('./${pkg}').author;process.exit(a&&(typeof a=
 chk R18 "node -e \"process.exit(require('./${pkg}').publishConfig&&require('./${pkg}').publishConfig.access==='public'?0:1)\""
 chk R22 "node -e \"const p=require('./${pkg}');process.exit(p.private?1:0)\""
 chk R7 "grep -q 'README.zh.md' README.md && grep -q 'README.md' README.zh.md"
-chk R6 "grep -q 'dsh-context' README.md && grep -q 'dsh-context' README.zh.md && grep -qiE 'sidebar|侧栏' README.md && grep -qE '侧栏' README.zh.md"
+chk R6 "grep -q 'dsh-context' README.md && grep -q 'dsh-context' README.zh.md && grep -qiE 'sidebar|侧栏' README.md && grep -qE '侧栏' README.zh.md && grep -q '^## Automatic language mode' README.md && grep -q '^## 自动语言模式' README.zh.md && grep -q 'languageMode' README.md && grep -q 'languageMode' README.zh.md"
 chk R11 "node -e \"const p=require('./${pkg}');const ok=u=>typeof u==='string'&&/^https:\\/\\//.test(u)&&/58fly\\/dsh-language-guard/.test(u);process.exit(ok(p.homepage)&&ok((p.bugs&&p.bugs.url)||'')?0:1)\""
 chk R13 "node -e \"const p=require('./${pkg}');const d=(p.engines||{}).node||'';const segs=d.split('||').map(x=>{const m=x.match(/\\d+/);return m?+m[0]:null}).filter(x=>x!==null);process.exit(segs.length&&Math.min(...segs)>=22?0:1)\""
 chk R12 "node -e \"const k=require('./${pkg}').keywords||[];process.exit(k.includes('dsh-plugin')&&k.includes('deepseek-harness')?0:1)\""

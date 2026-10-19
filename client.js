@@ -44,6 +44,61 @@ window.__ModuleLoader__.load({
       { code: 'ko', labelKey: 'language.preset.ko' },
     ];
 
+    /**
+     * 语言模式常量与解析规则。
+     *
+     * **本段是 `lib/language.js` 的逐条镜像**：Client 半是独立 bundle
+     * （`window.__ModuleLoader__.load` 的 factory 只能 `require('react')`，
+     * 不能相对 import 包内其他文件），因此无法直接复用 Host 侧的模块。
+     * 改这里的任何一条规则，必须同步改 `lib/language.js`，反之亦然；
+     * `scripts/verify-language.mjs` 用同一批用例断言 Host 侧行为，
+     * `scripts/verify-checklist.sh` 的 M1–M4 断言两侧规则文本一致。
+     */
+    const MODE_AUTO = 'auto';
+    const MODE_MANUAL = 'manual';
+    const MODE_UNSET = '';
+    const DEFAULT_LANGUAGE = 'zh-CN';
+
+    /** 归一化语言标识：去空白、下划线转连字符、校验 BCP-47 */
+    function normalizeLocaleId(raw) {
+      if (typeof raw !== 'string') return null;
+      const text = raw.trim().replace(/_/g, '-');
+      if (!text) return null;
+      return BCP47.test(text) ? text : null;
+    }
+
+    /** 界面语言 → targetLanguage（四条规则，与 Host 侧 mapPreference 一致） */
+    function mapPreference(preference) {
+      const id = normalizeLocaleId(preference);
+      if (!id) return null;
+      const primary = id.split('-')[0].toLowerCase();
+      if (primary === 'zh') return 'zh-CN';
+      if (primary === 'en') return 'en';
+      return id;
+    }
+
+    /** 三态 → 两态（含「老用户手选过语言」迁移规则） */
+    function effectiveMode(input) {
+      const defaultLanguage = (input && input.defaultLanguage) || DEFAULT_LANGUAGE;
+      const rawMode = input && typeof input.languageMode === 'string'
+        ? input.languageMode.trim().toLowerCase()
+        : '';
+      if (rawMode === MODE_MANUAL) return MODE_MANUAL;
+      if (rawMode === MODE_AUTO) return MODE_AUTO;
+      const target = normalizeLocaleId(input && input.targetLanguage) || defaultLanguage;
+      return target === defaultLanguage ? MODE_AUTO : MODE_MANUAL;
+    }
+
+    /** 解析来源：manual / ui / fallback */
+    function resolveSource(input) {
+      const mode = effectiveMode({
+        languageMode: input && input.mode,
+        targetLanguage: input && input.fallback,
+      });
+      if (mode === MODE_MANUAL) return 'manual';
+      return mapPreference(input && input.preference) ? 'ui' : 'fallback';
+    }
+
     /** 语言标签 → 显示名（与 Host 侧 lib/text.js 的映射表一致） */
     const LANGUAGE_NAMES = [
       ['zh-cn', '简体中文'],
@@ -66,6 +121,21 @@ window.__ModuleLoader__.load({
 
     const zh = {
       'card.title': '语言守卫',
+      'mode.legend': '语言来源',
+      'mode.auto': '自动（跟随界面语言）',
+      'mode.auto.desc': '按 DSH 的界面语言自动选择目标语言；切换界面语言后，下一条消息即生效。',
+      'mode.manual': '手动',
+      'mode.manual.desc': '固定使用下面填写的目标语言，不随界面语言变化。',
+      'mode.current': '当前解析为 {language}',
+      'mode.source.ui': '来自界面语言',
+      'mode.source.fallback': '未识别到界面语言，用配置值兜底',
+      'mode.migrated': '检测到你曾手动设置过目标语言，已保持手动模式。',
+      'mode.traditionalHint': 'DSH 内置语言只有「简体中文」与「English」，界面语言为简体时无法自动判断简繁；需要繁体请切到「手动」并选 zh-TW。',
+      'language.autoDisabled': '自动模式下不可编辑；切到「手动」即可自定义。',
+      'quick.menu.auto': '自动（跟随界面语言）',
+      'quick.menu.autoHint': '当前自动解析为 {label}',
+      'quick.menu.autoShort': '自动，{label}',
+
       'strength.label': '强度档位',
       'strength.recommended': '推荐',
       'strength.basic.label': '基础',
@@ -115,6 +185,21 @@ window.__ModuleLoader__.load({
 
     const en = {
       'card.title': 'Language Guard',
+      'mode.legend': 'Language source',
+      'mode.auto': 'Auto (follow the UI language)',
+      'mode.auto.desc': 'Picks the target language from the DSH interface language; takes effect on the next message after you switch.',
+      'mode.manual': 'Manual',
+      'mode.manual.desc': 'Always uses the target language below, regardless of the interface language.',
+      'mode.current': 'Currently resolved to {language}',
+      'mode.source.ui': 'from the interface language',
+      'mode.source.fallback': 'interface language not detected, using the configured value',
+      'mode.migrated': 'You previously set a target language manually, so manual mode is kept.',
+      'mode.traditionalHint': 'DSH ships only Simplified Chinese and English as UI languages, so Traditional Chinese cannot be detected automatically; switch to Manual and pick zh-TW.',
+      'language.autoDisabled': 'Not editable in auto mode; switch to Manual to customize.',
+      'quick.menu.auto': 'Auto (follow the UI language)',
+      'quick.menu.autoHint': 'Currently auto-resolved to {label}',
+      'quick.menu.autoShort': 'Auto, {label}',
+
       'strength.label': 'Strength',
       'strength.recommended': 'Recommended',
       'strength.basic.label': 'Basic',
@@ -205,6 +290,10 @@ window.__ModuleLoader__.load({
 .lg-details-summary { font-size: 13px; font-weight: 500; color: var(--dsw-alias-label-secondary); cursor: pointer; }
 .lg-skeleton { height: 120px; border-radius: 10px; background: var(--dsw-alias-bg-skeleton); }
 .lg-status { margin: 0; font-size: 12px; line-height: 1.5; color: var(--dsw-alias-label-tertiary); }
+.lg-mode-detail { display: flex; flex-direction: column; gap: 2px; margin-top: 2px; }
+.lg-mode-current { margin: 0; font-size: 12px; line-height: 1.5; color: var(--dsw-alias-label-secondary); }
+.lg-mode-source { margin: 0; font-size: 12px; line-height: 1.5; color: var(--dsw-alias-label-tertiary); }
+.lg-mode-migrated { margin: 0; font-size: 12px; line-height: 1.5; color: var(--dsw-alias-state-warn-primary); }
 .lg-notice { margin: 0; padding-top: 12px; border-top: 1px solid var(--dsw-alias-border-l1); font-size: 12px; line-height: 1.5; color: var(--dsw-alias-label-tertiary); }
 .lg-root { position: relative; display: inline-flex; }
 .lg-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 12px; cursor: pointer; }
@@ -318,6 +407,83 @@ window.__ModuleLoader__.load({
       const injected = hasInjected ? props.useGuardForm(identity) : null;
       const fallback = useFormState(hasInjected ? null : props.form);
       return injected || fallback;
+    }
+
+    /**
+     * 界面语言的 Host 命名空间。
+     *
+     * 这是 `dsh-client-locale` 的 Host entry id，也是 Host 侧
+     * `settings.describe()` 返回的行里的 `ns` 字段。两侧必须写成同一个值，
+     * 否则面板会显示一个语言、实际注入另一个语言。
+     */
+    const UI_LOCALE_NS = 'locale';
+
+    /**
+     * 读取「用户显式选择过的界面语言偏好」，与 Host 侧完全同源。
+     *
+     * 为什么不读 `ctx.locale.getSnapshot().active`：那个 `active` 在用户从未
+     * 选过语言时是浏览器/系统语言派生的 provisional（`dsh-client-locale/lib/
+     * client.js` 的 `resolveActive()`：`if (this.preference === void 0) return
+     * this.provisional`），而快照只暴露 `{active, locales, revision}`，根本不
+     * 带 `preference`。Host 读的是 `describe()` 里 locale 命名空间的
+     * `preference`，未设置时为 undefined。两者在「首次运行、从未选过语言」时
+     * 必然分叉：英文系统用户会看到面板写「来自界面语言 · English」，实际注入
+     * 的却是配置兜底的简体中文。
+     *
+     * 改用 `configForms.get('locale')`：它是 describe 镜像的投影
+     * （`dsh-client-ui-settings/lib/client.js` 的 `ConfigFormController`），
+     * `getSnapshot().value` 就是该命名空间的字段值，与 Host 的 `describe()`
+     * 是同一份 remote settings 镜像。`get()` 无条件创建 controller，不要求
+     * locale 已被 served，所以读失败就返回 null 走兜底，不要外面再包一层
+     * `whileServed(['locale'])`——那会把「locale 未装配」变成整块不渲染。
+     *
+     * @param {any} configForms `ctx.configForms` 服务（可能缺失）
+     * @returns {string | null} 显式偏好；从未选过或读取失败时为 null
+     */
+    function useUiPreference(configForms) {
+      const read = () => {
+        try {
+          const form =
+            configForms && typeof configForms.get === 'function'
+              ? configForms.get(UI_LOCALE_NS)
+              : null;
+          const snapshot =
+            form && typeof form.getSnapshot === 'function' ? form.getSnapshot() : null;
+          const preference = snapshot && snapshot.value ? snapshot.value.preference : undefined;
+          return typeof preference === 'string' && preference.trim() ? preference : null;
+        } catch {
+          return null;
+        }
+      };
+
+      const [value, setValue] = React.useState(read);
+
+      React.useEffect(() => {
+        // 订阅失败（服务未就绪、get 抛错）必须静默降级：面板显示兜底来源，
+        // 绝不能因为读一个别人的命名空间就把整张卡片炸掉。
+        let form = null;
+        try {
+          form =
+            configForms && typeof configForms.get === 'function'
+              ? configForms.get(UI_LOCALE_NS)
+              : null;
+        } catch {
+          form = null;
+        }
+        if (!form || typeof form.subscribe !== 'function') return undefined;
+        let alive = true;
+        const sync = () => {
+          if (alive) setValue(read());
+        };
+        sync();
+        const off = form.subscribe(sync);
+        return () => {
+          alive = false;
+          if (typeof off === 'function') off();
+        };
+      }, [configForms]);
+
+      return value;
     }
 
     /**
@@ -447,6 +613,86 @@ window.__ModuleLoader__.load({
       );
     }
 
+    /**
+     * 语言来源（自动 / 手动）单选组。
+     *
+     * 两档说明常驻并列，与三档强度同款原生 radio 卡片 —— 用户要能一眼看出
+     * 「自动」和「手动」的差别，而不是点了之后才发现语言变了。
+     * 选中项由 `effectiveMode()` 决定（不是直接读 `languageMode`）：
+     * 未设置时若用户手选过 targetLanguage，高亮「手动」，避免误导。
+     */
+    function ModeField({ value, migrated, resolved, source, disabled, onPick, t }) {
+      const options = [
+        {
+          value: MODE_AUTO,
+          key: 'auto',
+          extra:
+            value === MODE_AUTO
+              ? h(
+                  'div',
+                  { className: 'lg-mode-detail' },
+                  h(
+                    'p',
+                    { className: 'lg-mode-current', id: 'lg-mode-current' },
+                    t('mode.current', {
+                      language: languageLabel(resolved) + '（' + resolved + '）',
+                    }),
+                  ),
+                  h(
+                    'p',
+                    { className: 'lg-mode-source' },
+                    t('mode.source.' + source),
+                  ),
+                )
+              : null,
+        },
+        {
+          value: MODE_MANUAL,
+          key: 'manual',
+          extra: migrated
+            ? h('p', { className: 'lg-mode-migrated' }, t('mode.migrated'))
+            : null,
+        },
+      ];
+
+      return h(
+        'fieldset',
+        { className: 'lg-fieldset', disabled },
+        h('legend', { className: 'lg-legend' }, t('mode.legend')),
+        options.map((option) => {
+          const id = 'lg-mode-' + option.key;
+          const descId = id + '-desc';
+          const checked = value === option.value;
+          return h(
+            'div',
+            { key: option.value, className: checked ? 'lg-option lg-option-on' : 'lg-option' },
+            h('input', {
+              type: 'radio',
+              id,
+              name: 'language-guard-mode',
+              value: option.value,
+              checked,
+              disabled,
+              'aria-describedby': descId,
+              className: 'lg-radio',
+              onChange: () => onPick(option.value),
+            }),
+            h(
+              'div',
+              { className: 'lg-option-text' },
+              h(
+                'label',
+                { htmlFor: id, className: 'lg-option-title' },
+                t('mode.' + option.key),
+              ),
+              h('p', { id: descId, className: 'lg-desc' }, t('mode.' + option.key + '.desc')),
+              option.extra,
+            ),
+          );
+        }),
+      );
+    }
+
     /** 每字段的「恢复默认」按钮 */
     function ResetButton({ disabled, onClick, t }) {
       return h(
@@ -469,6 +715,8 @@ window.__ModuleLoader__.load({
 
       const [drafts, setDrafts] = React.useState(null);
       const [intervalDraft, setIntervalDraft] = React.useState(null);
+      // hook 必须在任何早退之前调用，保证每次渲染的调用顺序一致
+      const uiPreference = useUiPreference(props.configForms);
 
       const setField = (field, value) => {
         if (typeof props.onSet === 'function') return props.onSet(field, value);
@@ -507,6 +755,15 @@ window.__ModuleLoader__.load({
       const interval = typeof values.injectEveryNRounds === 'number' ? values.injectEveryNRounds : 8;
       const preserve = values.preserveCodeTerms !== false;
       const language = typeof values.targetLanguage === 'string' ? values.targetLanguage : 'zh-CN';
+
+      // —— 语言模式与自动解析（0.2.0）——
+      const rawMode = typeof values.languageMode === 'string' ? values.languageMode : MODE_UNSET;
+      const mode = effectiveMode({ languageMode: rawMode, targetLanguage: language });
+      // 迁移态：用户从没选过模式，但手选过 targetLanguage → 判成 manual
+      const migrated = rawMode === MODE_UNSET && mode === MODE_MANUAL;
+      const auto = mode === MODE_AUTO;
+      const resolved = auto ? mapPreference(uiPreference) || language : language;
+      const source = resolveSource({ mode: rawMode, preference: uiPreference, fallback: language });
 
       const draft = drafts || {
         targetLanguage: language,
@@ -547,6 +804,20 @@ window.__ModuleLoader__.load({
         h('style', null, CSS),
 
         readOnly ? h('p', { className: 'lg-status', role: 'status' }, t('state.readOnly')) : null,
+
+        ModeField({
+          value: mode,
+          migrated,
+          resolved,
+          source,
+          disabled: readOnly,
+          t,
+          onPick: (next) => {
+            if (next === mode && !migrated) return;
+            // 写显式值后，迁移规则不再生效（rawMode 不再是空串）
+            setField('languageMode', next);
+          },
+        }),
 
         StrengthField({
           value: strength,
@@ -614,7 +885,7 @@ window.__ModuleLoader__.load({
             type: 'text',
             className: 'lg-input',
             value: draft.targetLanguage,
-            disabled: readOnly,
+            disabled: readOnly || auto,
             spellCheck: false,
             autoComplete: 'off',
             'aria-invalid': languageValid ? undefined : 'true',
@@ -625,9 +896,11 @@ window.__ModuleLoader__.load({
           h(
             'p',
             { id: 'lg-language-hint', className: languageValid ? 'lg-hint' : 'lg-error' },
-            languageValid
-              ? t('language.hint') + ' ' + t('language.current', { code: languageLabel(language) })
-              : t('language.invalid'),
+            auto
+              ? t('language.autoDisabled')
+              : languageValid
+                ? t('language.hint') + ' ' + t('language.current', { code: languageLabel(language) })
+                : t('language.invalid'),
           ),
           h(
             'div',
@@ -642,7 +915,7 @@ window.__ModuleLoader__.load({
                     language.toLowerCase() === preset.code.toLowerCase()
                       ? 'lg-chip lg-chip-on'
                       : 'lg-chip',
-                  disabled: readOnly,
+                  disabled: readOnly || auto,
                   onClick: () => {
                     setDrafts({ ...draft, targetLanguage: preset.code });
                     setField('targetLanguage', preset.code);
@@ -778,8 +1051,22 @@ window.__ModuleLoader__.load({
       const values = (snapshot && snapshot.value) || {};
       const code = typeof values.targetLanguage === 'string' && values.targetLanguage
         ? values.targetLanguage
-        : 'zh-CN';
+        : DEFAULT_LANGUAGE;
       const label = languageLabel(code);
+
+      // 模式与自动解析结果（与设置卡片同一套规则）
+      const uiPreference = useUiPreference(props.configForms);
+      const rawMode = typeof values.languageMode === 'string' ? values.languageMode : MODE_UNSET;
+      const mode = effectiveMode({ languageMode: rawMode, targetLanguage: code });
+      const auto = mode === MODE_AUTO;
+      const resolved = auto ? mapPreference(uiPreference) || code : code;
+      const resolvedLabel = languageLabel(resolved);
+      // 触发按钮显示「实际生效的语言」：自动态显示解析结果，而不是配置里的占位值
+      const shownLabel = auto ? resolvedLabel : label;
+      // 菜单项：第 1 项固定是「自动」，其后是 5 个预设
+      const items = [{ kind: 'auto', id: '__auto__' }].concat(
+        PRESETS.map((preset) => ({ kind: 'preset', id: preset.code, preset })),
+      );
 
       const [open, setOpen] = React.useState(false);
       const [note, setNote] = React.useState(null);
@@ -807,22 +1094,43 @@ window.__ModuleLoader__.load({
         };
       }, [open]);
 
-      const pick = (value) => {
+      /**
+       * 选中一项。
+       *
+       * - 「自动」：只写 `languageMode = 'auto'`；
+       * - 具体语言：`languageMode = 'manual'` 与 `targetLanguage` **同批原子写**
+       *   （`form.mutate` 支持 ops 数组），避免中途 revision 变化留下
+       *   「手动模式 + 旧语言」的半截状态。
+       */
+      const pick = (item) => {
         setOpen(false);
         if (buttonRef.current) buttonRef.current.focus();
-        const same = String(value).toLowerCase() === String(code).toLowerCase();
+        const isAuto = item.kind === 'auto';
+        const same = isAuto ? auto : !auto && code.toLowerCase() === item.id.toLowerCase();
+        const ops = isAuto
+          ? [{ op: 'set', path: ['languageMode'], value: MODE_AUTO }]
+          : [
+              { op: 'set', path: ['languageMode'], value: MODE_MANUAL },
+              { op: 'set', path: ['targetLanguage'], value: item.id },
+            ];
         const run =
-          typeof props.onPick === 'function'
-            ? props.onPick(value)
-            : form && typeof form.set === 'function'
-              ? form.set('targetLanguage', value)
-              : Promise.resolve(false);
+          typeof props.onMutate === 'function'
+            ? props.onMutate(ops)
+            : form && typeof form.mutate === 'function'
+              ? form.mutate(ops)
+              : form && typeof form.set === 'function'
+                ? form.set('targetLanguage', isAuto ? MODE_AUTO : item.id)
+                : Promise.resolve(false);
+        const pickedLabel = isAuto ? resolvedLabel : languageLabel(item.id);
         Promise.resolve(run).then(
           (ok) => {
             if (ok === false) {
               setNote({ kind: 'error', text: t('error.saveFailed', { message: t('state.unavailable') }) });
             } else {
-              setNote({ kind: 'ok', text: same ? t('quick.already', { label: languageLabel(value) }) : t('state.saved') });
+              setNote({
+                kind: 'ok',
+                text: same ? t('quick.already', { label: pickedLabel }) : t('state.saved'),
+              });
             }
           },
           (err) => {
@@ -844,7 +1152,7 @@ window.__ModuleLoader__.load({
       };
 
       const moveFocus = (delta) => {
-        const next = (focusIndex + delta + PRESETS.length) % PRESETS.length;
+        const next = (focusIndex + delta + items.length) % items.length;
         setFocusIndex(next);
         focusItem(next);
       };
@@ -865,8 +1173,10 @@ window.__ModuleLoader__.load({
             className: 'lg-trigger',
             'aria-haspopup': 'menu',
             'aria-expanded': open,
-            'aria-label': t('quick.aria', { label }),
-            title: wide ? undefined : label,
+            'aria-label': t('quick.aria', {
+              label: auto ? t('quick.menu.autoShort', { label: shownLabel }) : shownLabel,
+            }),
+            title: wide ? undefined : shownLabel,
             onClick: () => {
               setOpen((value) => !value);
               setFocusIndex(0);
@@ -875,18 +1185,18 @@ window.__ModuleLoader__.load({
               if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
               event.preventDefault();
               setOpen(true);
-              const current = PRESETS.findIndex(
-                (preset) => preset.code.toLowerCase() === code.toLowerCase(),
+              const current = items.findIndex((item) =>
+                item.kind === 'auto' ? auto : code.toLowerCase() === item.id.toLowerCase(),
               );
               const next = event.key === 'ArrowDown'
-                ? (current < 0 ? 0 : (current + 1) % PRESETS.length)
-                : (current <= 0 ? PRESETS.length - 1 : current - 1);
+                ? (current < 0 ? 0 : (current + 1) % items.length)
+                : (current <= 0 ? items.length - 1 : current - 1);
               setFocusIndex(next);
               setTimeout(() => focusItem(next), 0);
             },
           },
           h(LanguageGlyph, { size: wide ? 16 : 18 }),
-          wide ? h('span', { className: 'lg-trigger-label' }, label) : null,
+          wide ? h('span', { className: 'lg-trigger-label' }, shownLabel) : null,
           wide ? h('span', { className: 'lg-caret', 'aria-hidden': 'true' }, '▾') : null,
         ),
         note
@@ -901,13 +1211,20 @@ window.__ModuleLoader__.load({
               'div',
               { className: 'lg-menu', role: 'menu', 'aria-label': t('quick.menu.title') },
               h('div', { className: 'lg-menu-header' }, t('quick.menu.title')),
-              h('div', { className: 'lg-menu-current' }, t('quick.menu.current', { label })),
-              PRESETS.map((preset, index) => {
-                const checked = code.toLowerCase() === preset.code.toLowerCase();
+              h(
+                'div',
+                { className: 'lg-menu-current' },
+                auto
+                  ? t('quick.menu.autoHint', { label: resolvedLabel })
+                  : t('quick.menu.current', { label }),
+              ),
+              items.map((item, index) => {
+                const isAuto = item.kind === 'auto';
+                const checked = isAuto ? auto : !auto && code.toLowerCase() === item.id.toLowerCase();
                 return h(
                   'button',
                   {
-                    key: preset.code,
+                    key: item.id,
                     type: 'button',
                     role: 'menuitemradio',
                     'aria-checked': checked,
@@ -926,15 +1243,21 @@ window.__ModuleLoader__.load({
                         moveFocus(-1);
                       }
                     },
-                    onClick: () => pick(preset.code),
+                    onClick: () => pick(item),
                   },
                   h(
                     'span',
                     { className: 'lg-check', 'aria-hidden': 'true' },
                     checked ? '✓' : '',
                   ),
-                  h('span', { className: 'lg-menu-label' }, t(preset.labelKey)),
-                  h('span', { className: 'lg-menu-code' }, preset.code),
+                  h(
+                    'span',
+                    { className: 'lg-menu-label' },
+                    isAuto ? t('quick.menu.auto') : t(item.preset.labelKey),
+                  ),
+                  isAuto
+                    ? null
+                    : h('span', { className: 'lg-menu-code' }, item.id),
                 );
               }),
               h('div', { className: 'lg-menu-hint' }, t('quick.menu.hint')),
@@ -969,6 +1292,8 @@ window.__ModuleLoader__.load({
                   locale: NS,
                   inject: () => ({
                     form,
+                    // 界面语言偏好（与 Host 同源：describe 镜像里 locale 命名空间的 preference）
+                    configForms: ctx.configForms,
                     hooks: { guardForm: form },
                     onSet: (field, value) =>
                       form && typeof form.set === 'function'
@@ -977,6 +1302,10 @@ window.__ModuleLoader__.load({
                     onUnset: (field) =>
                       form && typeof form.unset === 'function'
                         ? form.unset(field)
+                        : Promise.resolve(false),
+                    onMutate: (ops) =>
+                      form && typeof form.mutate === 'function'
+                        ? form.mutate(ops)
                         : Promise.resolve(false),
                   }),
                 },
@@ -1000,10 +1329,12 @@ window.__ModuleLoader__.load({
                   locale: NS,
                   inject: () => ({
                     form,
+                    // 侧栏菜单自动态也要显示解析结果，与设置卡片读同一个源
+                    configForms: ctx.configForms,
                     hooks: { guardForm: form },
-                    onPick: (value) =>
-                      form && typeof form.set === 'function'
-                        ? form.set('targetLanguage', value)
+                    onMutate: (ops) =>
+                      form && typeof form.mutate === 'function'
+                        ? form.mutate(ops)
                         : Promise.resolve(false),
                   }),
                 },

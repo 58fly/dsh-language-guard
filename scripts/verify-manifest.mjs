@@ -206,10 +206,12 @@ chk('C7 不 append 新 type 事件', () => {
   assert(!/session\.append\(/.test(hostCode), '不得 append 自定义 session 事件');
 });
 chk('C9 Config 全字段 volatile', () => {
-  const fields = ['targetLanguage', 'strength', 'injectEveryNRounds', 'preserveCodeTerms', 'extraRules', 'overrideHead'];
+  // 0.2.0 起 7 个字段：新增 languageMode（语言模式三态）
+  const fields = ['languageMode', 'targetLanguage', 'strength', 'injectEveryNRounds', 'preserveCodeTerms', 'extraRules', 'overrideHead'];
   for (const field of fields) assert(hostCode.includes(field), `Config 缺字段 ${field}`);
-  const volatileCount = (hostCode.match(/\.volatile\(\)/g) || []).length;
-  assert(volatileCount === 6, `.volatile() 应出现 6 次（逐字段），实际 ${volatileCount} 次`);
+  // 只数「行首缩进 + .volatile(),」的字段级调用，注释里的说明文字不算
+  const volatileCount = (hostCode.match(/^\s*\.volatile\(\),$/gm) || []).length;
+  assert(volatileCount === 7, `.volatile() 应出现 7 次（逐字段），实际 ${volatileCount} 次`);
   assert(!/z\.object\([\s\S]*\}\)\.volatile\(\)/.test(hostCode), 'volatile 不能加在根对象上');
 });
 chk('C10 不依赖第三方插件', () => {
