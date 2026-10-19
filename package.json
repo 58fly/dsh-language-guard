@@ -1,6 +1,6 @@
 {
   "name": "dsh-language-guard",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Lock model reasoning and replies to a target language in DeepSeek Harness (Simplified Chinese by default): three strength levels, configurable prompt sections, periodic reminders, a settings panel with a quick language switch.",
   "type": "module",
   "main": "./lib/index.js",
