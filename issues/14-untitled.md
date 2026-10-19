@@ -84,6 +84,61 @@ Labels: wayfinder:task
 ## Comments
 
 ### local — 2026-10-19T08:26:18.248Z
+
+### local — 2026-10-19T08:52:01.581Z
+## 独立评审结论（2026-10-19，质检员）：pass
+
+评审报告已落盘：`docs/评审报告-0.2.0.md`（379 行，七节）。评审基准 commit `f1eb0e8`，评审时工作区干净。
+
+### 实跑结果（全部自己跑，退出码单独取）
+
+| 命令 | 结果 |
+| --- | --- |
+| `node --check` 7 个 JS 文件 | 全部通过 |
+| `node scripts/verify-language.mjs` | **34 项全过**，退出码 0 |
+| `node scripts/verify-manifest.mjs` | **43/43 PASS**，`dsh-language-guard@0.2.0`，退出码 0 |
+| `bash scripts/verify-checklist.sh` | **73 PASS / 0 FAIL / 0 TODO**，退出码 0 |
+| `npm pack --dry-run --json` | `entryCount 15 / size 53657 / unpackedSize 163552` |
+
+### 六项实质变更逐条核实（captain 指定）
+
+1. **`lib/language.js` 是纯函数**：151 行，无任何 `import`/`require`，不引用 `ctx`/`fs`/`process`/`globalThis`。
+2. **Config 6 → 7，默认空串**：7 字段逐字段 `.volatile()`（`lib/index.js:286/295/303/312/318/324/330`，`grep -c "^    \.volatile(),"` = 7），根对象无 volatile。用**从 asar 提取的真实 schemastery 3.18.5**（不是 stub）实测：老配置 `{targetLanguage:'ja',…}` 加载后 `languageMode` 补空串、`ja` 保留；`{}` 得 `''/zh-CN/C/8/true`；`'AUTO'` 与 `targetLanguage:'auto'` 均被拒。`effectiveMode` 四种组合逐一符合。
+3. **没有系统语言这一档**：解析链只有 `locale.preference` → `targetLanguage`；全仓无 `Intl`/`os.locale`/`process.env.LANG` 读取；`detectedLanguage` 未实现。「来自系统语言」在 5 个文件（client.js、locale/{zh,en}.json、README 两版）计数 **0**。
+4. **Host 读界面语言链路**：`cachedPreference`（`lib/index.js:138`）→ `readLocalePreference()`（`:144-156`，`describe()` 找 `ns==='locale'` 取 `value.preference`）→ `refreshPreference()`（`:163-171`，**首行 `if (currentMode() === MODE_MANUAL) { cachedPreference = null; return; }`，manual 态连 describe 都不调**）→ 调用点仅 `:249`（apply 期）与 `:260`（`settings/document-updated` 订阅，ns 为 `locale`/`language-guard` 时刷新）。`text()` 只读缓存变量（`:104`、`:231`），无 I/O。
+5. **Client 与 Host 同源（缺陷修复）**：`UI_LOCALE_NS='locale'`（`client.js:419`）、`useUiPreference`（`:443`）、两个调用点 `:719`/`:1058` 均传 `props.configForms`，两个 slot 的 `inject` 都给了 `configForms: ctx.configForms`（`:1296`/`:1333`）。`locale.getSnapshot` 仅 1 次且在注释（`:424`），`localeFace` 计数 **0**。**同源性用上游源码证明**：`dsh-client-ui-settings/lib/client.js:1240-1300` 的 `ConfigForms.get(entryId)` 与 `describe()` 共用同一个 `this.mirror`（`:1287` 返回 `this.mirror`，`:1116-1118` 订阅 `mirror`），所以两侧是**同一次 describe 的两个投影**；官方 `dsh-client-locale/lib/client.js:1517` 自己也是 `ctx.configForms.get('locale')`。
+6. **三档 order 与 `interpolate` 一字未动**：`git diff lib/index.js | grep -c 'order:\|interpolate:'` = **0**；HEAD 版为 `-2000` / `5100` / `11200`，三处均 `interpolate: false`。
+
+### 其他核实
+
+- **三档文案**：`strength.basic/strong/periodic` 的 label 与 desc 共 6 项与 `docs/decisions/01-mechanism.md` 2.1 节**逐字一致（含标点）**。
+- **字符数复算**：head 818 / mid 118 / tail 139 / reminder 99，B=957、C=1075，与 `01-mechanism.md` 第 0 节、README 两版**三处一致**。
+- **字典**：zh 59 键 / en 59 键，仅 zh 有 `[]`、仅 en 有 `[]`、重复 `[]`。**无 `addLanguage` 调用**（7 个 JS 文件逐个 grep 为 0），`locale.register(NS,{zh,en})` 在 `client.js:1274`，`register` 返回 disposer（官方实现 `:1387-1417`）。
+- **自动态可见性**：`lg-mode-current`（`client.js:631-645`）+ `lg-mode-source`（`:644`）；来源只有两种文案（`client.js:130-131`）；自动态 `disabled` 不隐藏（`:886`、`:914`）；侧栏菜单 6 项（`:1067-1069` + PRESETS `:39-45`）。
+- **红线**：20 种 token 中唯一非 alias 的是 `--dsw-focus-ring-color`（官方白名单）；primitives / iframe / `document.body` / `createRoot` / `system-prompt/assemble` / `llm/stream` / `appendPluginRecord` / `session.append` / `agent.ctx` **全部 0 命中**。
+- **README 双语**：各 415 行 / 14 二级 / 11 三级 / 20 代码块 / 52 表格行，且 14 个二级与 11 个三级标题**行号逐一对齐**。
+
+### 未验证项（环境限制，不是代码问题）
+
+本机无 `dsh` CLI（`which dsh` 无输出）；`dsh_browser_open` 报 `browser provider(s) electron are registered but report themselves unavailable … run npx install-electron in the active profile or set ELECTRON_PATH`。因此 **B5、D11、D12、E2、E3、F1/F2/F7–F14/F16/F17（13 项）、R8/R14/R20 共 21 项标「未验证 + 环境限制原因」**，按门禁规则第 1 条发布前必须补验。
+
+### 三条低危观察（不阻断，建议后续处理）
+
+| 编号 | 位置 | 观察 |
+| --- | --- | --- |
+| O1 | `client.js:47-100` | 镜像段注释称「逐条镜像」，但 Client 无 `resolveTargetLanguage()`，在 `:765`/`:1062` 内联 `mapPreference(uiPreference) \|\| code`。语义等价，但注释与实现略有出入 |
+| O2 | `docs/验收清单.md:149` | R23 说明里举的历史尺寸「0.1.1 的 41221」在 `docs/发布说明.md` 无出处（该表是 0.1.0 的 40011 → 0.1.1 的 41240） |
+| O3 | `client.js:93-100` | `resolveSource()` 调 `effectiveMode()` 时未转发 `defaultLanguage`（Host 侧 `lib/language.js:146` 转了）。当前调用方都用默认值，无实际影响 |
+
+### 一条评审侧纪律教训
+
+本轮首次实跑得到 `72 PASS / 1 FAIL / exit 1`（R23 报 4 个历史尺寸「与实测不符」），几分钟后同一命令得到 `73 PASS / 0 FAIL / exit 0`；`stat` 显示脚本 mtime `16:33:30` 晚于首次运行 `16:32:35`，`git status` 已干净 —— 工作区未提交版本在评审期间被改写并还原。**若按第一次结果出报告，会得出完全相反的结论（误判 R23 为「反向断言假阳性」）。结论：评审报告必须记录基准 commit，并在写结论前重跑关键命令。**
+
+另记一个计数坑：`grep -c "^PASS"` 得 74，因为汇总行 `PASS 73   FAIL 0 …` 也以 `PASS` 开头；条目数要用 `grep "^PASS" | grep -v "^PASS [0-9]" | wc -l`。
+
+Status: resolved
+Type: task
+
 ## 补充修复（2026-10-19，票关闭后）：Client 界面语言数据源缺陷
 
 Answer 的 D 节「两侧一致性」只讲了**镜像纯函数**的一致性，漏掉了**输入信号**的一致性——这是真实缺陷，已修。

@@ -222,6 +222,15 @@ test('输出永远是合法 BCP-47', () => {
   }
 });
 
+test('【镜像 O1】resolveTargetLanguage 四态：auto/manual × preference 有值/无值', () => {
+  // client.js 的镜像段必须与 lib/language.js 有同名同义函数（评审报告 O1）。
+  // 两个调用点（设置卡片、侧栏菜单）都走它，映射规则只存在一处。
+  assert.equal(resolveTargetLanguage({ mode: 'auto', preference: 'zh', fallback: 'ja' }), 'zh-CN');
+  assert.equal(resolveTargetLanguage({ mode: 'auto', preference: null, fallback: 'ja' }), 'ja');
+  assert.equal(resolveTargetLanguage({ mode: 'manual', preference: 'zh', fallback: 'ja' }), 'ja');
+  assert.equal(resolveTargetLanguage({ mode: 'manual', preference: null, fallback: 'ja' }), 'ja');
+});
+
 // ===========================================================================
 // 四、来源 resolveSource（UI 上「为什么是这个语言」）
 // ===========================================================================
@@ -244,6 +253,14 @@ test('auto 态 preference 缺失 → fallback', () => {
 
 test('老用户迁移态（未设 + 非默认）来源为 manual', () => {
   assert.equal(resolveSource({ mode: '', preference: 'zh', fallback: 'ja' }), 'manual');
+});
+
+test('【镜像 O3】resolveSource 必须转发 defaultLanguage', () => {
+  // 不转发时 effectiveMode 用内置默认 zh-CN，把 fallback: 'zh-CN' 判成 auto，
+  // 于是来源显示「来自界面语言」——而 Host 侧判 manual，两侧分叉。
+  const input = { mode: '', preference: 'zh', fallback: 'zh-CN', defaultLanguage: 'en' };
+  assert.equal(resolveSource(input), 'manual');
+  assert.equal(resolveTargetLanguage(input), 'zh-CN');
 });
 
 // ===========================================================================

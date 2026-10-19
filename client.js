@@ -89,11 +89,37 @@ window.__ModuleLoader__.load({
       return target === defaultLanguage ? MODE_AUTO : MODE_MANUAL;
     }
 
+    /**
+     * 解析最终生效的 targetLanguage（与 Host 侧 `lib/language.js` 的
+     * `resolveTargetLanguage` 逐字等价）：
+     *
+     * ```
+     * manual 态 → fallback（默认 zh-CN）
+     * auto   态 → mapPreference(preference) ?? fallback（默认 zh-CN）
+     * ```
+     *
+     * `input.mode` 是**原始的** `languageMode`（可以是 `''`），三态判定在本函数内部做，
+     * 保证「老用户手选过语言」的迁移规则在任何调用点都生效。
+     */
+    function resolveTargetLanguage(input) {
+      const defaultLanguage = (input && input.defaultLanguage) || DEFAULT_LANGUAGE;
+      const base = normalizeLocaleId(input && input.fallback) ?? defaultLanguage;
+      const effective = effectiveMode({
+        languageMode: input && input.mode,
+        targetLanguage: input && input.fallback,
+        defaultLanguage,
+      });
+      if (effective === MODE_MANUAL) return base;
+      return mapPreference(input && input.preference) ?? base;
+    }
+
     /** 解析来源：manual / ui / fallback */
     function resolveSource(input) {
+      const defaultLanguage = (input && input.defaultLanguage) || DEFAULT_LANGUAGE;
       const mode = effectiveMode({
         languageMode: input && input.mode,
         targetLanguage: input && input.fallback,
+        defaultLanguage,
       });
       if (mode === MODE_MANUAL) return 'manual';
       return mapPreference(input && input.preference) ? 'ui' : 'fallback';
@@ -762,7 +788,11 @@ window.__ModuleLoader__.load({
       // 迁移态：用户从没选过模式，但手选过 targetLanguage → 判成 manual
       const migrated = rawMode === MODE_UNSET && mode === MODE_MANUAL;
       const auto = mode === MODE_AUTO;
-      const resolved = auto ? mapPreference(uiPreference) || language : language;
+      const resolved = resolveTargetLanguage({
+        mode: rawMode,
+        preference: uiPreference,
+        fallback: language,
+      });
       const source = resolveSource({ mode: rawMode, preference: uiPreference, fallback: language });
 
       const draft = drafts || {
@@ -1059,7 +1089,11 @@ window.__ModuleLoader__.load({
       const rawMode = typeof values.languageMode === 'string' ? values.languageMode : MODE_UNSET;
       const mode = effectiveMode({ languageMode: rawMode, targetLanguage: code });
       const auto = mode === MODE_AUTO;
-      const resolved = auto ? mapPreference(uiPreference) || code : code;
+      const resolved = resolveTargetLanguage({
+        mode: rawMode,
+        preference: uiPreference,
+        fallback: code,
+      });
       const resolvedLabel = languageLabel(resolved);
       // 触发按钮显示「实际生效的语言」：自动态显示解析结果，而不是配置里的占位值
       const shownLabel = auto ? resolvedLabel : label;
