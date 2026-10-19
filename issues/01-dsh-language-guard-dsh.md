@@ -10,11 +10,12 @@
 
 成功的样子：
 
-- `dsh plugin add https://github.com/58fly/dsh-language-guard` 一条命令可装（或固定版本 `github:58fly/dsh-language-guard#v0.1.0`），装完立即生效，无需重启 DSH。
+- `dsh plugin add https://github.com/58fly/dsh-language-guard` 一条命令可装（或固定版本 `github:58fly/dsh-language-guard#v0.1.2`）。**装插件本身需重启一次 DSH**（profile 组合包变更）；装好之后在面板里改档位、改目标语言**不需要重启**，下一条消息即生效。
+- 显示名为「语言守卫 / Language Guard」，中英两版同义对译，不绑定任何具体语言（0.1.2 定案；0.1.1 及之前误叫「中文语言守卫」）。
 - 提供三档强度（基础 / 强化 / 周期），用户在 Web 插件面板里选择，每档有中文说明。
 - 面板支持快速语言切换，UI 符合 DSH Desktop 主题规范（只用 `--dsw-alias-*` token，不引 Client primitives）。
 - README 中英双语，含机制说明与「如何自证约束真的进了 system prompt」的验证步骤。
-- `npm pack` 14 文件 / 41221 B；Git 安装三种 spec 形式实测通过；`npm publish --dry-run` 全绿（保留为将来可选的发布路径）。
+- `npm pack` 14 文件 / 41240 B；Git 安装三种 spec 形式实测通过；`npm publish --dry-run` 全绿（保留为将来可选的发布路径）。
 
 ## Notes
 
@@ -25,7 +26,7 @@
 - **命名**：包名与仓库名均为 `dsh-language-guard`（npm 与 GitHub 两处均已实测未被占用）。
 - **UI**：v0.1 **要做**设置面板，符合 DSH Desktop UI 风格，支持快速语言切换。
 - **机制**：B/C/D 三档全部做成面板选项，由用户自选并配说明。
-- **发布**：做到 publish-ready；`npm publish` 由用户本人执行（凭据不经 agent 之手）。
+- **发布**：~~做到 publish-ready；`npm publish` 由用户本人执行~~ → **后续定案改为 GitHub 分发**（npm 注册被 Cloudflare 403 拦住、命令行注册通道已被 npm 关闭）。凭据始终不经 agent 之手。
 - **文档**：README 中英双语。
 
 ### 已查证的技术事实
@@ -33,8 +34,8 @@
 - section order 常量表在 `dsh-system-prompt/lib/index.js:10-43`：`HARNESS_IDENTITY:-1000`、`DEPLOYMENT_PERSONA_PREFIX:0`、工具段 `500–5000`、`HARNESS_SOURCE:10000`、`WEB_SURFACE:10100`、`DEPLOYMENT_PERSONA_SUFFIX:10200`。
 - `ctx.systemPrompt.section({name, order, text})` 注册，按 order 排序、按 name 唯一；`text` 支持函数求值。
 - `systemPrompt.context` 的 `text` 同样支持函数求值（`resolveContext`，`dsh-system-prompt/lib/index.js:184-190`）。
-- 配置字段加 `.volatile()` 即可运行时 `get()`/`set()`，改配置**不用重启**；`ctx.settings.configure(...)` 把插件配置注册进 Web 插件页配置区，UI 由宿主渲染。
-- `agent.inject()` 记入 `agent/inbox/spliced` 事件并进入下一个被接纳的 step，**不污染 messages、不破坏日志**——这是 D 档的合规实现路径。
+- 配置字段加 `.volatile()` 即可运行时 `get()`/`set()`，改配置**不用重启**（volatile 只换运行中引用、不重挂插件）。~~`ctx.settings.configure(...)` 把插件配置注册进 Web 插件页配置区，UI 由宿主渲染~~ → **已被 #03/#04 推翻**：安装树里没有 schema→控件渲染器，配置页必须插件自己画（见 `## Decisions so far`）。
+- ~~`agent.inject()` 记入 `agent/inbox/spliced` 事件并进入下一个被接纳的 step，**不污染 messages、不破坏日志**——这是 D 档的合规实现路径~~ → **已被 #02 推翻**：`agent.inject()` 是 `send(input, "next-step", false)`、不唤醒，idle 时注入会一直躺在 inbox；D 档改走 `agent/pre-step` 改写 `decision.messages`（见 `## Decisions so far`）。
 - 官方 `practices.md` 明确禁止：`Do not listen to 'system-prompt/assemble' to add or remove tools or text.`（此条否定了最初设想的 C 方案，已改为多 section 方案）。
 - 官方 Host-only bundle 也**必须**提供 `locale/en.json`（含 `meta.title`/`meta.description`）与包内图标（≤256KiB），并 export `./locale/*.json` 与 `./icon`。
 
@@ -82,7 +83,7 @@
 
 ## 任务清单
 
-<!-- 10 条，与本 map 的 10 张子票一一对齐；阻塞关系以建边工具落下的原生依赖边为准，此处只作索引。 -->
+<!-- 11 条，与本 map 的 11 张子票一一对齐；阻塞关系以建边工具落下的原生依赖边为准，此处只作索引。 -->
 
 - [x] #02 调研：D 档周期提醒的 agent.inject 合规实现
 - [x] #03 调研：DSH Desktop 设置面板与快速语言切换的官方实现范式
@@ -94,12 +95,13 @@
 - [x] #09 决策：包结构与 manifest 规范（依赖 #06）
 - [x] #10 实现：dsh-language-guard 插件 Host 半与 Client 半
 - [x] #11 缺陷：选择目标语言后「没有任何改变」（0.1.1 已修复）
+- [x] #12 缺陷：插件显示名「中文语言守卫」与通用语言锁定器定位不符（0.1.2 已改名为「语言守卫 / Language Guard」）
 
-当前状态：地图 open；子票 10 张，**全部关闭**（#02–#11）；依赖边共 9 条（7 条原生 block 边 + #10、#11 各 1 条 parent 边）；地图快照 `open 0 / closed 10 / frontier 0 / blocked 0`。
+当前状态：地图 open；子票 11 张，**全部关闭**（#02–#12）；依赖边共 10 条（7 条原生 block 边 + #10、#11、#12 各 1 条 parent 边）；地图快照 `open 0 / closed 11 / frontier 0 / blocked 0`。
 
 执行由 AgentTeams 团队「中文语言守卫插件开发组」承接（6 名成员、11 个任务，状态 `deliverable / Delivery: ok`）。落地结果：
 
-- 插件已实现并落盘 14 个文件，`npm pack --dry-run` 通过（`entryCount: 14` / `size: 41221` / `unpackedSize: 124059`）。
+- 插件已实现并落盘 14 个文件，`npm pack --dry-run` 通过（`entryCount: 14` / `size: 41240` / `unpackedSize: 124132`）。
 - 验收脚本 `scripts/verify-checklist.sh` **59 项 PASS / 0 FAIL / 0 TODO**，退出码 0（新增 F19：约束文本必须点名 AGENTS.md）。
 - 已开源并打 tag：<https://github.com/58fly/dsh-language-guard>（public、MIT、8 个 topic；`v0.1.0` 与 `v0.1.1` 均已 push）。
 - **分发方式最终定案为 GitHub**（不是 npm registry）：出口 IP 被 Cloudflare 风控导致注册页 403，且 npm 已关闭命令行注册通道。Git 安装三种 spec 形式实测通过，`files` 白名单在 Git 安装时同样生效（只拉 14 个运行时文件）。`npm publish --dry-run` 仍全绿，保留为将来可选的发布路径。
