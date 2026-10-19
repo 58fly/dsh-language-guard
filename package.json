@@ -1,6 +1,6 @@
 {
   "name": "dsh-language-guard",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Enforce Simplified Chinese reasoning and replies in DeepSeek Harness: three strength levels, configurable prompt sections, periodic reminders, a settings panel with a quick language switch.",
   "type": "module",
   "main": "./lib/index.js",

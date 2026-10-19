@@ -110,6 +110,7 @@ window.__ModuleLoader__.load({
       'quick.menu.current': '当前：{label}',
       'quick.menu.check': '已选中',
       'quick.menu.hint': '其他语言可在 设置 → 插件 → 中文语言守卫 中填写。',
+      'quick.already': '当前已是 {label}',
     };
 
     const en = {
@@ -159,6 +160,7 @@ window.__ModuleLoader__.load({
       'quick.menu.current': 'Current: {label}',
       'quick.menu.check': 'Selected',
       'quick.menu.hint': 'Other languages can be entered in Settings → Plugins → Chinese Language Guard.',
+      'quick.already': 'Already {label}',
     };
 
     // —— 样式：只用主题 token，类名 lg- 前缀，用 <style> React 元素渲染 ——
@@ -211,6 +213,10 @@ window.__ModuleLoader__.load({
 .lg-trigger-label { max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lg-caret { color: var(--dsw-alias-label-tertiary); }
 .lg-glyph { flex: none; display: block; }
+.lg-note { position: absolute; z-index: 11; padding: 4px 8px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 6px; background: var(--dsw-alias-bg-overlay); font-size: 12px; line-height: 1.4; white-space: nowrap; color: var(--dsw-alias-state-success-primary); }
+.lg-note[data-kind='error'] { color: var(--dsw-alias-state-error-primary); }
+.lg-root[data-rail='true'] .lg-note { bottom: 0; left: calc(100% + 8px); }
+.lg-root:not([data-rail='true']) .lg-note { bottom: calc(100% + 8px); right: 0; }
 .lg-menu { position: absolute; z-index: 10; min-width: 200px; padding: 4px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 6px; background: var(--dsw-alias-bg-overlay); box-shadow: 0 4px 16px var(--dsw-alias-border-l1); }
 .lg-root[data-rail='true'] .lg-menu { bottom: 0; left: calc(100% + 8px); }
 .lg-root:not([data-rail='true']) .lg-menu { bottom: calc(100% + 8px); left: 0; }
@@ -776,6 +782,7 @@ window.__ModuleLoader__.load({
       const label = languageLabel(code);
 
       const [open, setOpen] = React.useState(false);
+      const [note, setNote] = React.useState(null);
       const [focusIndex, setFocusIndex] = React.useState(0);
       const rootRef = React.useRef(null);
       const buttonRef = React.useRef(null);
@@ -803,9 +810,33 @@ window.__ModuleLoader__.load({
       const pick = (value) => {
         setOpen(false);
         if (buttonRef.current) buttonRef.current.focus();
-        if (typeof props.onPick === 'function') props.onPick(value);
-        else if (form && typeof form.set === 'function') form.set('targetLanguage', value);
+        const same = String(value).toLowerCase() === String(code).toLowerCase();
+        const run =
+          typeof props.onPick === 'function'
+            ? props.onPick(value)
+            : form && typeof form.set === 'function'
+              ? form.set('targetLanguage', value)
+              : Promise.resolve(false);
+        Promise.resolve(run).then(
+          (ok) => {
+            if (ok === false) {
+              setNote({ kind: 'error', text: t('error.saveFailed', { message: t('state.unavailable') }) });
+            } else {
+              setNote({ kind: 'ok', text: same ? t('quick.already', { label: languageLabel(value) }) : t('state.saved') });
+            }
+          },
+          (err) => {
+            const message = err && err.message ? err.message : String(err);
+            setNote({ kind: 'error', text: t('error.saveFailed', { message }) });
+          },
+        );
       };
+
+      React.useEffect(() => {
+        if (!note) return undefined;
+        const timer = setTimeout(() => setNote(null), 4000);
+        return () => clearTimeout(timer);
+      }, [note]);
 
       const focusItem = (index) => {
         const node = itemRefs.current[index];
@@ -858,6 +889,13 @@ window.__ModuleLoader__.load({
           wide ? h('span', { className: 'lg-trigger-label' }, label) : null,
           wide ? h('span', { className: 'lg-caret', 'aria-hidden': 'true' }, '▾') : null,
         ),
+        note
+          ? h(
+              'span',
+              { className: 'lg-note', role: 'status', 'aria-live': 'polite', 'data-kind': note.kind },
+              note.text,
+            )
+          : null,
         open
           ? h(
               'div',

@@ -14,7 +14,7 @@
 - 提供三档强度（基础 / 强化 / 周期），用户在 Web 插件面板里选择，每档有中文说明。
 - 面板支持快速语言切换，UI 符合 DSH Desktop 主题规范（只用 `--dsw-alias-*` token，不引 Client primitives）。
 - README 中英双语，含机制说明与「如何自证约束真的进了 system prompt」的验证步骤。
-- `npm pack` 14 文件 / 40011 B；Git 安装三种 spec 形式实测通过；`npm publish --dry-run` 全绿（保留为将来可选的发布路径）。
+- `npm pack` 14 文件 / 41221 B；Git 安装三种 spec 形式实测通过；`npm publish --dry-run` 全绿（保留为将来可选的发布路径）。
 
 ## Notes
 
@@ -98,7 +98,7 @@
 
 执行由 AgentTeams 团队「中文语言守卫插件开发组」承接（6 名成员、11 个任务，状态 `deliverable / Delivery: ok`）。落地结果：
 
-- 插件已实现并落盘 14 个文件，`npm pack --dry-run` 通过（`entryCount: 14` / `size: 40011` / `unpackedSize: 118648`）。
+- 插件已实现并落盘 14 个文件，`npm pack --dry-run` 通过（`entryCount: 14` / `size: 41221` / `unpackedSize: 124059`）。
 - 验收脚本 `scripts/verify-checklist.sh` **58 项 PASS / 0 FAIL / 0 TODO**，退出码 0。
 - 已开源并打 tag：<https://github.com/58fly/dsh-language-guard>（public、MIT、8 个 topic、`v0.1.0` 已 push）。
 - **分发方式最终定案为 GitHub**（不是 npm registry）：出口 IP 被 Cloudflare 风控导致注册页 403，且 npm 已关闭命令行注册通道。Git 安装三种 spec 形式实测通过，`files` 白名单在 Git 安装时同样生效（只拉 14 个运行时文件）。`npm publish --dry-run` 仍全绿，保留为将来可选的发布路径。

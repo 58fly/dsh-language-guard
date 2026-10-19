@@ -274,9 +274,18 @@ fi
 # F18：四段文本字符数与 docs/decisions/01-mechanism.md 第 0 节表格一致。
 # 该数字曾被算成 556（形参名传成 targetLanguage，⟨LANG⟩ 未替换）与估算值 200/350/110，故必须复算。
 if [ -f lib/text.js ]; then
-  chk F18 "node --input-type=module -e \"const m=await import('./lib/text.js');const h=m.headText({language:'zh-CN'}),d=m.midText({language:'zh-CN'}),t=m.tailText({language:'zh-CN'}),r=m.reminderText({language:'zh-CN'});const ok=h.length===552&&d.length===118&&t.length===113&&r.length===99&&h.length+t.length===665&&h.length+d.length+t.length===783;if(!ok)console.log('实际',h.length,d.length,t.length,r.length,'B='+(h.length+t.length),'C='+(h.length+d.length+t.length));process.exit(ok?0:1)\""
+  chk F18 "node --input-type=module -e \"const m=await import('./lib/text.js');const h=m.headText({language:'zh-CN'}),d=m.midText({language:'zh-CN'}),t=m.tailText({language:'zh-CN'}),r=m.reminderText({language:'zh-CN'});const ok=h.length===818&&d.length===118&&t.length===139&&r.length===99&&h.length+t.length===957&&h.length+d.length+t.length===1075;if(!ok)console.log('实际',h.length,d.length,t.length,r.length,'B='+(h.length+t.length),'C='+(h.length+d.length+t.length));process.exit(ok?0:1)\""
 else
   todo F18 "缺少 lib/text.js"
+fi
+
+# F19：约束文本必须显式压过 AGENTS.md 一类语言约定。
+# 背景：0.1.0 的首段只声明「优先于英文内容」，而用户全局 AGENTS.md 常写着「必须使用简体中文」，
+# 模型据此改回中文，表现为「选了日语却没变化」。0.1.1 起首段必须点名 AGENTS.md。
+if [ -f lib/text.js ]; then
+  chk F19 "grep -q 'AGENTS.md' lib/text.js && grep -q 'AGENTS.md' README.md && grep -q 'AGENTS.md' README.zh.md && grep -q 'AGENTS.md' docs/decisions/01-mechanism.md"
+else
+  todo F19 "缺少 lib/text.js"
 fi
 
 # F3：三档为原生 radio group，三档说明并列常驻（非 select、非 tooltip）。

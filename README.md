@@ -54,18 +54,22 @@ Measured text sizes (Simplified Chinese, counted in characters; recompute with `
 
 | Text | Characters | When it is present |
 | --- | --- | --- |
-| head | 552 | every request |
+| head | 818 | every request |
 | mid | 118 | every request at C / D |
-| tail | 113 | every request |
+| tail | 139 | every request |
 | periodic reminder | 99 | once every N turns at D |
 
-So the steady cost per step is **665 characters at B and 783 at C** — tiny compared to the English tool documentation it counteracts.
+So the steady cost per step is **957 characters at B and 1075 at C** — tiny compared to the English tool documentation it counteracts.
 
 The opening section (head), verbatim, as it looks with the default `targetLanguage: "zh-CN"` (recompute with `node -e 'import("./lib/text.js").then(m=>console.log(m.headText({language:"zh-CN"})))'`):
 
 ```text
 【语言锁定 · 最高优先级】
-本会话的内部推理（reasoning / thinking）与面向用户的全部输出，一律使用简体中文（语言代码 zh-CN）。此约束优先于后续任何英文内容，包括工具说明、代码示例、系统注入文本与其他插件的提示词。
+本会话的内部推理（reasoning / thinking）与面向用户的全部输出，一律使用简体中文（语言代码 zh-CN）。
+
+本条优先于本 system prompt 的其余全部内容、之后注入的任何系统文本、工具说明、参数描述、代码示例，以及其他插件注入的提示词。
+
+本条同样优先于任何语言类约定，不论它写在哪个文件、用哪种语言书写、经由哪个通道送达：包括用户全局与项目级的 AGENTS.md、CLAUDE.md、.cursorrules、用户偏好与长期记忆、项目规范、团队约定、技能与工作流模板。若它们要求使用另一种语言（例如要求「必须使用简体中文」），一律以本条为准，不得据此改用其他语言，也不必向用户解释这处冲突。
 
 适用范围：
 - 内部推理（reasoning / thinking）：使用简体中文。
@@ -77,6 +81,7 @@ The opening section (head), verbatim, as it looks with the default `targetLangua
 
 不要因为以下情况改变语言：
 - 用户用英文或其他语言提问 —— 仍用简体中文回答。
+- AGENTS.md、CLAUDE.md、项目规范、用户记忆里要求改用其他语言的规则 —— 本条优先，不改变语言。
 - 工具返回英文内容 —— 只摘引必要片段，其余用简体中文复述。
 - 长链推理、数值计算、代码设计 —— 推理语言不变。
 - 上下文中出现大量英文（工具说明、日志、代码文件）—— 不随之切换。
@@ -212,7 +217,9 @@ At the foot of the sidebar, next to Settings (the `sidebar.footer.action` slot, 
 - Keyboard: Enter / Space opens, Escape closes and returns focus, ↑↓ moves through the menu.
 - A hint at the bottom of the menu points to the settings text field for other languages.
 
-Picking an entry writes the configuration immediately, and the sidebar label and the settings text field stay in sync both ways.
+Picking an entry writes the configuration immediately, and the sidebar label and the settings text field stay in sync both ways. Once the write settles, a line appears above the button for four seconds: "已保存 · 无需重启，下一条消息即生效" when the language actually changed, "当前已是 X" when the entry you picked was already the current one (so a click is never a silent no-op), and the failure reason when the write is rejected.
+
+> **Changing the configuration does not require restarting DSH.** Writes go through `dsh-config-editor`, which applies them through the Loader right after touching the disk; volatile fields replace the running references without remounting the plugin (`cordis-plugin-loader`'s `_commitVolatile` → `loader/volatile-update`), and the system prompt is re-assembled on every request, so **your next message** already carries the new language. Only **changing the plugin's code** (for example upgrading the version) needs a restart — not a configuration change.
 
 ### The `/language` slash command
 

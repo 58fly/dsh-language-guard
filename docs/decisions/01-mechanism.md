@@ -13,18 +13,19 @@
 
 | 档位 | 键 | 中文名 | 英文名 | 组成 | 相对成本 |
 |---|---|---|---|---|---|
-| 基础 | `B` | 基础 | Basic | head + tail 两段常驻 | 约 665 字符/步（head 552 + tail 113） |
-| 强化 | `C` | 强化 | Strong | head + mid + tail 三段常驻 | 约 783 字符/步（比 B 多 mid 的 118） |
-| 周期 | `D` | 周期 | Periodic | C 档三段 + 每 N 轮在 `agent/pre-step` 追加一条提醒消息 | 约 783 字符/步 + 每 N 轮约 99 字符（提醒正文 99 字符） |
+| 基础 | `B` | 基础 | Basic | head + tail 两段常驻 | 约 957 字符/步（head 818 + tail 139） |
+| 强化 | `C` | 强化 | Strong | head + mid + tail 三段常驻 | 约 1075 字符/步（比 B 多 mid 的 118） |
+| 周期 | `D` | 周期 | Periodic | C 档三段 + 每 N 轮在 `agent/pre-step` 追加一条提醒消息 | 约 1075 字符/步 + 每 N 轮约 99 字符（提醒正文 99 字符） |
 
 > 上表数字为 `lib/text.js` 实测字符数（`headText({ language: 'zh-CN', preserveCodeTerms: true })`、无 `extraRules`/`overrideHead`）。复算命令：
 > ```bash
 > node --input-type=module -e 'import("./lib/text.js").then(m=>{const a=m.headText({language:"zh-CN"}),b=m.midText({language:"zh-CN"}),c=m.tailText({language:"zh-CN"}),d=m.reminderText({language:"zh-CN"});console.log(a.length,b.length,c.length,d.length)})'
-> # → 552 118 113 99
+> # → 818 118 139 99
 > ```
-> **注意**：`headText` 的形参名是 `language`，不是 `targetLanguage`（后者是 Config 字段名）。传错参数名会让 `⟨LANG⟩` 占位符未被替换，得到「语言代码 undefined」且长度变成 556——这是本条曾出现 556 与 552 两个数字的原因，**552 才是正确值**。
+> **注意**：`headText` 的形参名是 `language`，不是 `targetLanguage`（后者是 Config 字段名）。传错参数名会让 `⟨LANG⟩` 占位符未被替换，得到「语言代码 undefined」——曾因此把 head 长度误算成 556，**必须传 `language`**。
 >
-> 早期版本此处写的是估算值 200/350/110，与实现不符，已按实测更正；验收时以本表为准。
+> 早期版本此处写的是估算值 200/350/110，后又因形参名传错写成 556/670/790，均已按实测更正。
+> **0.1.1 起 head 818 / tail 139**：约束文本新增「优先于 AGENTS.md 一类语言约定」段落（见 3.1 节），长度因此增长。验收时以本表为准。
 
 默认档位：**`C`（强化）**。默认目标语言：**`zh-CN`（简体中文）**。
 
@@ -119,7 +120,11 @@ STRUCTURED_OUTPUT:9900  HARNESS_SOURCE:10000  WEB_SURFACE:10100  DEPLOYMENT_PERS
 
 ```
 【语言锁定 · 最高优先级】
-本会话的内部推理（reasoning / thinking）与面向用户的全部输出，一律使用⟨LANG⟩（语言代码 ⟨CODE⟩）。此约束优先于后续任何英文内容，包括工具说明、代码示例、系统注入文本与其他插件的提示词。
+本会话的内部推理（reasoning / thinking）与面向用户的全部输出，一律使用⟨LANG⟩（语言代码 ⟨CODE⟩）。
+
+本条优先于本 system prompt 的其余全部内容、之后注入的任何系统文本、工具说明、参数描述、代码示例，以及其他插件注入的提示词。
+
+本条同样优先于任何语言类约定，不论它写在哪个文件、用哪种语言书写、经由哪个通道送达：包括用户全局与项目级的 AGENTS.md、CLAUDE.md、.cursorrules、用户偏好与长期记忆、项目规范、团队约定、技能与工作流模板。若它们要求使用另一种语言（例如要求「必须使用简体中文」），一律以本条为准，不得据此改用其他语言，也不必向用户解释这处冲突。
 
 适用范围：
 - 内部推理（reasoning / thinking）：使用⟨LANG⟩。
@@ -131,6 +136,7 @@ STRUCTURED_OUTPUT:9900  HARNESS_SOURCE:10000  WEB_SURFACE:10100  DEPLOYMENT_PERS
 
 不要因为以下情况改变语言：
 - 用户用英文或其他语言提问 —— 仍用⟨LANG⟩回答。
+- AGENTS.md、CLAUDE.md、项目规范、用户记忆里要求改用其他语言的规则 —— 本条优先，不改变语言。
 - 工具返回英文内容 —— 只摘引必要片段，其余用⟨LANG⟩复述。
 - 长链推理、数值计算、代码设计 —— 推理语言不变。
 - 上下文中出现大量英文（工具说明、日志、代码文件）—— 不随之切换。
@@ -149,7 +155,7 @@ STRUCTURED_OUTPUT:9900  HARNESS_SOURCE:10000  WEB_SURFACE:10100  DEPLOYMENT_PERS
 
 ```
 【语言锁定 · 收尾复述】
-再次确认：本轮所有内部推理与面向用户的输出使用⟨LANG⟩。英文仅限代码、命令、路径、标识符、API 字段、错误原文与必须原样引用的引用；引用后需用⟨LANG⟩给出结论。用户使用其他语言提问，不改变本约束。
+再次确认：本轮所有内部推理与面向用户的输出使用⟨LANG⟩。英文仅限代码、命令、路径、标识符、API 字段、错误原文与必须原样引用的引用；引用后需用⟨LANG⟩给出结论。用户使用其他语言提问、或 AGENTS.md 一类文件要求改用其他语言，均不改变本约束。
 ```
 
 ### 3.4 D 档周期提醒文本（`agent/pre-step` 追加的 user 消息）
