@@ -423,7 +423,7 @@ apply(ctx) {
 ```json
 {
   "meta": {
-    "title": "中文语言守卫",
+    "title": "语言守卫",
     "description": "强制模型用简体中文思考与回复：基础 / 强化 / 周期三档强度、可配置的约束落点、周期性自检提醒，并支持 /language 快速切换。"
   }
 }
@@ -432,7 +432,7 @@ apply(ctx) {
 ### 5.3 规则
 
 - 只放 `meta.title` 与 `meta.description`，字段名固定（`PluginLocalizedMeta`）。**不要**把插件配置项写进 locale——配置项说明来自 schemastery 的 `meta.description`（`01-mechanism.md` 第 4 节）。
-- 两个文件的 `title` **必须不同语言但同一含义**，不能一边写「Language Guard」一边写「中文语言守卫（测试）」这种对不上的话（验收 F3 会比对档位说明与面板文案的一致性）。
+- 两个文件的 `title` **必须不同语言但同一含义**，不能一边写「Language Guard」一边写「语言守卫（测试）」这种对不上的话（验收 F3 会比对档位说明与面板文案的一致性）。
 - 缺 `meta.title` 会回退到 `package.json` 的 `name`（显示成 `dsh-language-guard`），缺 `description` 回退到 `package.json` 的 `description`（英文长句）。**回退不算失败，但会被面板显示成英文**，所以两个文件都必须写。
 - 文件名必须是 `en.json` / `zh.json`，靠 `exports["./locale/*.json"]` 暴露。
 - 格式化 JSON 时**不要加注释**（JSON 不支持），也不要用 `zh-CN.json` 这种带地区的名字——面板按主语言标签匹配。
@@ -455,7 +455,7 @@ apply(ctx) {
 `icon.svg` 原文（约 330 字节）：
 
 ```svg
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="中文语言守卫">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="语言守卫 / Language Guard">
   <rect x="32" y="32" width="960" height="960" rx="216" fill="#2F6FED"/>
   <rect x="276" y="316" width="472" height="392" rx="72" fill="none" stroke="#FFFFFF" stroke-width="76"/>
   <rect x="468" y="176" width="88" height="672" rx="44" fill="#FFFFFF"/>

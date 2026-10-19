@@ -228,7 +228,7 @@ function StrengthField({ value, disabled, onPick, t }) {
 ```json
 {
   "meta": {
-    "title": "中文语言守卫",
+    "title": "语言守卫",
     "description": "强制模型用简体中文思考与回复：可调强度档位、目标语言与周期提醒，改动即时生效。"
   }
 }
@@ -237,7 +237,7 @@ function StrengthField({ value, disabled, onPick, t }) {
 ```json
 {
   "meta": {
-    "title": "Chinese Language Guard",
+    "title": "Language Guard",
     "description": "Keeps the model thinking and replying in your chosen language, with adjustable strength, target language, and periodic reminders. Changes apply immediately."
   }
 }
@@ -250,7 +250,7 @@ const NS = 'languageGuard';
 
 const zh = {
   // —— 设置卡片
-  'card.title': '中文语言守卫',
+  'card.title': '语言守卫',
   'strength.label': '强度档位',
   'strength.recommended': '推荐',
   'strength.basic.label': '基础',
@@ -293,11 +293,11 @@ const zh = {
   'quick.menu.title': '目标语言',
   'quick.menu.current': '当前：{label}',
   'quick.menu.check': '已选中',
-  'quick.menu.hint': '其他语言可在 设置 → 插件 → 中文语言守卫 中填写。',
+  'quick.menu.hint': '其他语言可在 设置 → 插件 → 语言守卫 中填写。',
 };
 
 const en = {
-  'card.title': 'Chinese Language Guard',
+  'card.title': 'Language Guard',
   'strength.label': 'Strength',
   'strength.recommended': 'Recommended',
   'strength.basic.label': 'Basic',
@@ -339,7 +339,7 @@ const en = {
   'quick.menu.title': 'Target language',
   'quick.menu.current': 'Current: {label}',
   'quick.menu.check': 'Selected',
-  'quick.menu.hint': 'Other languages can be entered in Settings → Plugins → Chinese Language Guard.',
+  'quick.menu.hint': 'Other languages can be entered in Settings → Plugins → Language Guard.',
 };
 ```
 

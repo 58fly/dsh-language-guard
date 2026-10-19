@@ -1,4 +1,4 @@
-# 中文语言守卫（dsh-language-guard）
+# 语言守卫（dsh-language-guard）
 
 [English](README.md) | **简体中文**
 

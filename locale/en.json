@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Language Guard",
-    "description": "Keeps model reasoning and replies in Simplified Chinese: three strength levels, configurable prompt placement, periodic reminders, and a /language switch. If you also use dsh-context, consider clearing its promptPrefix / promptSuffix — its sections share this plugin's order and duplicate token cost."
+    "description": "Locks model reasoning and replies to a target language (Simplified Chinese by default): three strength levels, configurable prompt placement, periodic reminders, and a /language switch. If you also use dsh-context, consider clearing its promptPrefix / promptSuffix — its sections share this plugin's order and duplicate token cost."
   }
 }

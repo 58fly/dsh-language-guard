@@ -1,4 +1,4 @@
-# Chinese Language Guard (dsh-language-guard)
+# Language Guard (dsh-language-guard)
 
 **English** | [简体中文](README.zh.md)
 
