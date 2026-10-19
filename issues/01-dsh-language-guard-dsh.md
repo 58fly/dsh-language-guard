@@ -82,7 +82,7 @@
 
 ## 任务清单
 
-<!-- 9 条，与本 map 的 9 张子票一一对齐；阻塞关系以建边工具落下的原生依赖边为准，此处只作索引。 -->
+<!-- 10 条，与本 map 的 10 张子票一一对齐；阻塞关系以建边工具落下的原生依赖边为准，此处只作索引。 -->
 
 - [x] #02 调研：D 档周期提醒的 agent.inject 合规实现
 - [x] #03 调研：DSH Desktop 设置面板与快速语言切换的官方实现范式
@@ -93,14 +93,15 @@
 - [x] #08 决策：中英双语 README 与验证文档结构（依赖 #06、#04）
 - [x] #09 决策：包结构与 manifest 规范（依赖 #06）
 - [x] #10 实现：dsh-language-guard 插件 Host 半与 Client 半
+- [x] #11 缺陷：选择目标语言后「没有任何改变」（0.1.1 已修复）
 
-当前状态：地图 open；子票 9 张，**全部关闭**（#02–#10）；依赖边共 8 条（7 条原生 block 边 + 1 条 #10 的 parent 边）；地图快照 `open 0 / closed 9 / frontier 0 / blocked 0`。
+当前状态：地图 open；子票 10 张，**全部关闭**（#02–#11）；依赖边共 9 条（7 条原生 block 边 + #10、#11 各 1 条 parent 边）；地图快照 `open 0 / closed 10 / frontier 0 / blocked 0`。
 
 执行由 AgentTeams 团队「中文语言守卫插件开发组」承接（6 名成员、11 个任务，状态 `deliverable / Delivery: ok`）。落地结果：
 
 - 插件已实现并落盘 14 个文件，`npm pack --dry-run` 通过（`entryCount: 14` / `size: 41221` / `unpackedSize: 124059`）。
-- 验收脚本 `scripts/verify-checklist.sh` **58 项 PASS / 0 FAIL / 0 TODO**，退出码 0。
-- 已开源并打 tag：<https://github.com/58fly/dsh-language-guard>（public、MIT、8 个 topic、`v0.1.0` 已 push）。
+- 验收脚本 `scripts/verify-checklist.sh` **59 项 PASS / 0 FAIL / 0 TODO**，退出码 0（新增 F19：约束文本必须点名 AGENTS.md）。
+- 已开源并打 tag：<https://github.com/58fly/dsh-language-guard>（public、MIT、8 个 topic；`v0.1.0` 与 `v0.1.1` 均已 push）。
 - **分发方式最终定案为 GitHub**（不是 npm registry）：出口 IP 被 Cloudflare 风控导致注册页 403，且 npm 已关闭命令行注册通道。Git 安装三种 spec 形式实测通过，`files` 白名单在 Git 安装时同样生效（只拉 14 个运行时文件）。`npm publish --dry-run` 仍全绿，保留为将来可选的发布路径。
 - 本机 profile 已实装并**重启后复验通过**：最新 `system/message` 节点长度 15116，三段命中 3/3，落点 0 / 12251 / 15005 递增；旧方案（dsh-context 的 promptPrefix/promptSuffix）已清理且探针消失。
 - 环境侧附带修复：本机 profile 的 `pnpm-workspace.yaml` 里两条 Git spec 形式的 `allowBuilds` 键会让任何 `pnpm install` 报 `ERR_PNPM_INVALID_VERSION_UNION`，已删除并记录在 `docs/发布说明.md` 第二节补记。
