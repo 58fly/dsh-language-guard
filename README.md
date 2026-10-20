@@ -94,15 +94,15 @@ The opening section (head), verbatim, as it looks with the default `targetLangua
 
 ## Install
 
-This plugin is distributed through its **GitHub repository**; it is not published to the npm registry. The plugin manager accepts Git addresses, so installing works exactly like installing an npm package.
+This plugin is published to the **npm registry** ([`dsh-language-guard`](https://www.npmjs.com/package/dsh-language-guard)), and it can also be installed straight from its GitHub repository. Both routes deliver byte-identical content: the same 15 files.
 
 **Option 1: the GUI (recommended)**
 
 1. Open the **Plugins** panel in the sidebar.
-2. Click **Add plugin** and paste the repository address:
+2. Click **Add plugin** and paste the package name:
 
    ```
-   https://github.com/58fly/dsh-language-guard
+   dsh-language-guard
    ```
 
 3. When the install finishes, click **Enable now**.
@@ -110,13 +110,20 @@ This plugin is distributed through its **GitHub repository**; it is not publishe
 **Option 2: the CLI**
 
 ```bash
-dsh plugin add https://github.com/58fly/dsh-language-guard
+dsh plugin add dsh-language-guard
 ```
 
-**Pinned version** (recommended for teams and CI, so `main` cannot drift under you):
+**Pinned version** (recommended for teams and CI, so `latest` cannot drift under you):
 
 ```bash
-dsh plugin add "github:58fly/dsh-language-guard#v0.1.0"
+dsh plugin add dsh-language-guard@0.2.1
+```
+
+**From GitHub** (when npm is unreachable, or to pin by tag):
+
+```bash
+dsh plugin add https://github.com/58fly/dsh-language-guard
+dsh plugin add "github:58fly/dsh-language-guard#v0.2.1"
 ```
 
 **From a local directory** (to debug local changes; the path must be absolute):
@@ -133,7 +140,7 @@ Check that it worked:
 
 > **No controls visible means the plugin is not enabled.** Both slots register inside `configForms.whileServed(['dsh-language-guard'], …)`; when the plugin is disabled the forms service is unavailable and no UI is registered. That is deliberate, not a bug — enable the plugin on the Plugins page first.
 
-Requirements: DSH `>= 0.2.1-rc.2`, Node `^22.19.0 || >=24.0.0`. `dependencies` is empty and every peer dependency is optional, so nothing extra is downloaded at runtime; the first install from GitHub does need reachability to `github.com` (or `codeload.github.com`).
+Requirements: DSH `>= 0.2.1-rc.2`, Node `^22.19.0 || >=24.0.0`. `dependencies` is empty and every peer dependency is optional, so nothing extra is downloaded at runtime. Installing from npm only needs reachability to `registry.npmjs.org`; installing from GitHub needs `github.com` (or `codeload.github.com`).
 
 ## Strength levels
 

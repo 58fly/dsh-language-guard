@@ -6,16 +6,16 @@
 
 发布一个完全符合 DSH 插件规范的独立插件包 `dsh-language-guard`，开源到 GitHub `58fly/dsh-language-guard`，让用户能把模型的**思考过程与回复语言锁定为指定语言**（默认简体中文），不再出现「规定中文却漂移成英文或反复切换」。
 
-> **分发方式变更（后续定案）**：npm registry 未发布——出口 IP 被 Cloudflare 风控，注册页 403、命令行注册通道已被 npm 关闭。改为 **GitHub 分发**（插件管理器原生支持 Git 地址），功能无损失。详见 `docs/发布说明.md` 第一节。
+> **分发方式定案**：**npm registry 已发布**（`dsh-language-guard@0.2.1`，`latest` 指向 0.2.1，2026-10-20 发布），npm 为主通道、GitHub 为备。曾因出口 IP 被 Cloudflare 风控而先走 GitHub 分发，后换网络注册成功并解决发布 2FA（`npm publish` 在 TTY 下走 web 认证链接，不需要验证器 App）。详见 `docs/发布说明.md` 第一节。
 
 成功的样子：
 
-- `dsh plugin add https://github.com/58fly/dsh-language-guard` 一条命令可装（或固定版本 `github:58fly/dsh-language-guard#v0.2.1`）。**装插件本身需重启一次 DSH**（profile 组合包变更）；装好之后在面板里改档位、改目标语言**不需要重启**，下一条消息即生效。
+- `dsh plugin add dsh-language-guard` 一条命令可装（固定版本 `dsh-language-guard@0.2.1`；npm 不可达时用 `https://github.com/58fly/dsh-language-guard`）。**装插件本身需重启一次 DSH**（profile 组合包变更）；装好之后在面板里改档位、改目标语言**不需要重启**，下一条消息即生效。
 - 显示名为「语言守卫 / Language Guard」，中英两版同义对译，不绑定任何具体语言（0.1.2 定案；0.1.1 及之前误叫「中文语言守卫」）。
 - 提供三档强度（基础 / 强化 / 周期），用户在 Web 插件面板里选择，每档有中文说明。
 - 面板支持快速语言切换，UI 符合 DSH Desktop 主题规范（只用 `--dsw-alias-*` token，不引 Client primitives）。
 - README 中英双语，含机制说明与「如何自证约束真的进了 system prompt」的验证步骤。
-- `npm pack` 15 文件 / 54590 B / 解包 166610 B；Git 安装三种 spec 形式实测通过；`npm publish --dry-run` 全绿（保留为将来可选的发布路径）。
+- `npm pack` 15 文件 / 54704 B / 解包 167078 B；**已发布到 npm registry**（`dsh-language-guard@0.2.1`，`latest` 指向 0.2.1，2026-10-20）与 GitHub 双通道。
 
 ## Notes
 
@@ -102,7 +102,7 @@
 - [x] #16 缺陷：发布说明第十一节 0.1.1 的 pack 尺寸被 0.1.2 覆盖（评审 O2，0.2.0 已修）
 - [x] #17 缺陷：Client 镜像段无回归防护（G1：resolveTargetLanguage / resolveSource 两侧等价性零覆盖）（0.2.1 已修）
 
-当前状态：地图 open；子票 16 张，**全部关闭**（#02–#17）；依赖边共 15 条（8 条原生 block 边 + #10–#17 各 1 条 parent 边）。0.2.0 与 0.2.1 已完成并发布：评审 `pass`（`docs/评审报告-0.2.0.md`，含第八节终版复核），验收 `74 PASS / 0 FAIL / 0 TODO`，`npm pack` 15 文件 / 54590 B / 解包 166610 B，`v0.2.0` 与 `v0.2.1` tag 均已 push。
+当前状态：地图 open；子票 16 张，**全部关闭**（#02–#17）；依赖边共 15 条（8 条原生 block 边 + #10–#17 各 1 条 parent 边）。0.2.0 与 0.2.1 已完成并发布：评审 `pass`（`docs/评审报告-0.2.0.md`，含第八节终版复核），验收 `74 PASS / 0 FAIL / 0 TODO`，`npm pack` 15 文件 / 54704 B / 解包 167078 B，`v0.2.0`、`v0.2.1` tag 均已 push；`0.2.2` 为 README 安装章节修正版，待发布。
 
 **0.2.0 新增需求（用户 2026-10-19 提出）**：自动识别当前语言环境、语言模式自动选择。已澄清定案：识别信号=界面语言为主、系统语言兜底；只自动选目标语言；自动/手动两态、默认自动。拆为 #13 调研 + #14 实现。
 
@@ -117,7 +117,7 @@
 - 新增 `scripts/verify-mirror.mjs`（清单 **M14**）：把 `client.js` 里手抄的解析规则抽出来动态 import，与 `lib/language.js` 逐函数比输出。矩阵 `MODES(10) × LANGS(23) × FALLBACKS(8) × DEFAULTS(6)` + `effectiveMode` 的 `targetLanguage` 维 = **12420 组输入 / 56580 次函数比较 / 不一致 0**。
 - **为什么必须手抄两份**：Client 是独立 bundle，`window.__ModuleLoader__.load` 的 factory 只能 `require('react')`，不能相对 import 包内文件。抄两份就必须有判据守住，而 0.2.0 时这条守护是假的：`verify-language.mjs` 只 import Host 模块、从不读 `client.js`；M1/M2 只是源文本抽查；R23 是文档尺寸副作用。实测把 `client.js` 的 `MODE_MANUAL` 改成 `'auto'`，全仓仍绿。
 - 顺带修掉一处两侧不等价：`defaultLanguage` 兜底，Host 用默认参数（**只对 `undefined` 生效**），Client 原用 `||`（对任何假值生效），`null` / `''` 时判定相反。`??` 也修不好（对 `null` 也兜底），最终用 `pickDefaultLanguage()` 精确模拟默认参数语义。
-- 验收 `74 PASS / 0 FAIL / 0 TODO`，`verify-language.mjs` 36 项，`verify-mirror.mjs` 不一致 0。`npm pack` 15 文件 / 54590 B / 解包 166610 B。
+- 验收 `74 PASS / 0 FAIL / 0 TODO`，`verify-language.mjs` 36 项，`verify-mirror.mjs` 不一致 0。`npm pack` 15 文件 / 54704 B / 解包 167078 B。
 - 五组变异验证 M14 非空转：常量改值（常量不等）、`mapPreference` 改规则（5942 处）、去掉 `defaultLanguage` 转发（818 处）、`pickDefaultLanguage` 改回 `||`（1374 处）、改成 `??`（682 处，全在 `defaultLanguage=null`）。
 
 
