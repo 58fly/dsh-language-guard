@@ -15,7 +15,7 @@
 - 提供三档强度（基础 / 强化 / 周期），用户在 Web 插件面板里选择，每档有中文说明。
 - 面板支持快速语言切换，UI 符合 DSH Desktop 主题规范（只用 `--dsw-alias-*` token，不引 Client primitives）。
 - README 中英双语，含机制说明与「如何自证约束真的进了 system prompt」的验证步骤。
-- `npm pack` 15 文件 / 54528 B / 解包 166516 B；Git 安装三种 spec 形式实测通过；`npm publish --dry-run` 全绿（保留为将来可选的发布路径）。
+- `npm pack` 15 文件 / 54590 B / 解包 166610 B；Git 安装三种 spec 形式实测通过；`npm publish --dry-run` 全绿（保留为将来可选的发布路径）。
 
 ## Notes
 
@@ -102,7 +102,7 @@
 - [x] #16 缺陷：发布说明第十一节 0.1.1 的 pack 尺寸被 0.1.2 覆盖（评审 O2，0.2.0 已修）
 - [x] #17 缺陷：Client 镜像段无回归防护（G1：resolveTargetLanguage / resolveSource 两侧等价性零覆盖）（0.2.1 已修）
 
-当前状态：地图 open；子票 16 张，**全部关闭**（#02–#17）；依赖边共 15 条（8 条原生 block 边 + #10–#17 各 1 条 parent 边）。0.2.0 与 0.2.1 已完成并发布：评审 `pass`（`docs/评审报告-0.2.0.md`，含第八节终版复核），验收 `74 PASS / 0 FAIL / 0 TODO`，`npm pack` 15 文件 / 54528 B / 解包 166516 B，`v0.2.0` 与 `v0.2.1` tag 均已 push。
+当前状态：地图 open；子票 16 张，**全部关闭**（#02–#17）；依赖边共 15 条（8 条原生 block 边 + #10–#17 各 1 条 parent 边）。0.2.0 与 0.2.1 已完成并发布：评审 `pass`（`docs/评审报告-0.2.0.md`，含第八节终版复核），验收 `74 PASS / 0 FAIL / 0 TODO`，`npm pack` 15 文件 / 54590 B / 解包 166610 B，`v0.2.0` 与 `v0.2.1` tag 均已 push。
 
 **0.2.0 新增需求（用户 2026-10-19 提出）**：自动识别当前语言环境、语言模式自动选择。已澄清定案：识别信号=界面语言为主、系统语言兜底；只自动选目标语言；自动/手动两态、默认自动。拆为 #13 调研 + #14 实现。
 
@@ -117,7 +117,7 @@
 - 新增 `scripts/verify-mirror.mjs`（清单 **M14**）：把 `client.js` 里手抄的解析规则抽出来动态 import，与 `lib/language.js` 逐函数比输出。矩阵 `MODES(10) × LANGS(23) × FALLBACKS(8) × DEFAULTS(6)` + `effectiveMode` 的 `targetLanguage` 维 = **12420 组输入 / 56580 次函数比较 / 不一致 0**。
 - **为什么必须手抄两份**：Client 是独立 bundle，`window.__ModuleLoader__.load` 的 factory 只能 `require('react')`，不能相对 import 包内文件。抄两份就必须有判据守住，而 0.2.0 时这条守护是假的：`verify-language.mjs` 只 import Host 模块、从不读 `client.js`；M1/M2 只是源文本抽查；R23 是文档尺寸副作用。实测把 `client.js` 的 `MODE_MANUAL` 改成 `'auto'`，全仓仍绿。
 - 顺带修掉一处两侧不等价：`defaultLanguage` 兜底，Host 用默认参数（**只对 `undefined` 生效**），Client 原用 `||`（对任何假值生效），`null` / `''` 时判定相反。`??` 也修不好（对 `null` 也兜底），最终用 `pickDefaultLanguage()` 精确模拟默认参数语义。
-- 验收 `74 PASS / 0 FAIL / 0 TODO`，`verify-language.mjs` 36 项，`verify-mirror.mjs` 不一致 0。`npm pack` 15 文件 / 54528 B / 解包 166516 B。
+- 验收 `74 PASS / 0 FAIL / 0 TODO`，`verify-language.mjs` 36 项，`verify-mirror.mjs` 不一致 0。`npm pack` 15 文件 / 54590 B / 解包 166610 B。
 - 五组变异验证 M14 非空转：常量改值（常量不等）、`mapPreference` 改规则（5942 处）、去掉 `defaultLanguage` 转发（818 处）、`pickDefaultLanguage` 改回 `||`（1374 处）、改成 `??`（682 处，全在 `defaultLanguage=null`）。
 
 

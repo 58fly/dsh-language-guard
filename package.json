@@ -70,7 +70,11 @@
     "system-prompt",
     "i18n"
   ],
-  "author": "58fly",
+  "author": {
+    "name": "sunjingzhi",
+    "email": "dlyh@vip.qq.com",
+    "url": "https://github.com/58fly"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
