@@ -60,7 +60,13 @@ if (dirty === null) {
   );
 }
 
-// ---- 2. HEAD 必须已被 tag 标记 ----
+// ---- 2. tag 之后，进包的内容不能变过 ----
+//
+// 真正的约束是「npm 上发布的内容 == tag 指向的内容」，不是「HEAD 正好等于 tag」。
+// 用后者会让任何不进包的提交（.github/、docs/、scripts/、package-lock.json）
+// 都把校验打红，逼着为一行 CI 配置发一个内容完全相同的版本号。
+// 所以这里比的是「发包白名单内的文件在 tag 之后有没有变化」——
+// tag 正好指向 HEAD 时这个差集为空，等价于原来的严格判断。
 const head = tryGit(['rev-parse', 'HEAD']);
 const tagCommit = tryGit(['rev-list', '-n', '1', tagName]);
 
@@ -72,10 +78,22 @@ if (head === null) {
     `git tag ${tagName} && git push origin main && git push origin ${tagName}`
   );
 } else if (tagCommit !== head) {
-  fail(
-    `tag ${tagName} 指向 ${tagCommit.slice(0, 8)}，不是当前 HEAD ${head.slice(0, 8)}`,
-    '发布内容必须等于 tag 指向的内容，否则 GitHub 与 npm 不一致'
-  );
+  // package.json 永远进包，files 白名单里的条目按 pathspec 交给 git diff 展开。
+  const shipped = ['package.json', ...(Array.isArray(pkg.files) ? pkg.files : [])];
+  const changed = tryGit(['diff', '--name-only', tagName, head, '--', ...shipped]);
+
+  if (changed === null) {
+    fail(
+      `无法比较 tag ${tagName} 与 HEAD 的差异`,
+      'git 读不到这两个 commit 时无法判断进包内容是否变过'
+    );
+  } else if (changed !== '') {
+    const list = changed.split('\n');
+    fail(
+      `tag ${tagName} 之后有 ${list.length} 个进包文件变化：${list.slice(0, 5).join('、')}${list.length > 5 ? ' 等' : ''}`,
+      '进包内容变了就必须升版本、重新打 tag；只改不进包的文件（docs/、scripts/、.github/）不需要'
+    );
+  }
 }
 
 // ---- 3. 发布后自检：三方比对 ----
