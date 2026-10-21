@@ -45,7 +45,9 @@ npm publish
 
 1. 工作区干净（无未提交改动）
 2. `HEAD` 上存在 `v<package.json version>` 的 tag
-3. tag 指向的 commit 就是当前 `HEAD`
+3. tag 之后，**进包的内容**没有变过（比对 `package.json` + `files` 白名单内文件的 `git diff`；tag 正好指向 `HEAD` 时差集为空）
+
+第 3 条只约束进包内容，是因为真正的铁律是「npm 上发布的内容 == tag 指向的内容」。只改 `docs/`、`scripts/`、`.github/`、`package-lock.json` 这类不进包的文件，不需要为了通过校验而发一个内容完全相同的版本号。
 
 任一项不满足，发布直接失败。这不是可跳过的建议，是硬拦截。确实需要紧急跳过时用 `npm publish --ignore-scripts`，但那属于明知故犯，事后必须在同一天补齐 Git 侧。
 
