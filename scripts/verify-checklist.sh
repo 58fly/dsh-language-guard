@@ -577,12 +577,12 @@ if [ "${npm_ok}" = 1 ]; then
   else
     chk R16 "npm publish --dry-run --cache '${npm_cache}' >'${pack_tmp}/pub.log' 2>&1; ! grep -q 'npm error' '${pack_tmp}/pub.log'"
   fi
-  # R23 是打包体积的精确字节断言；npm pack 的产物字节随 npm 版本变化，跨机器不可移植。
-  if [ "${ci_mode}" = 1 ]; then
-    note R23 "CI 的 npm 版本与本机不同，精确字节断言不可移植；仍由本机发布流程承担"
-  else
-    chk R23 "node '${pack_tmp}/r23.cjs' '${pack_tmp}/pack.json'"
-  fi
+  # R23 是打包体积的精确字节断言。此前一直假设「npm pack 的产物字节随 npm 版本变化，
+  # 跨机器不可移植」而在 CI 跳过——但那是推断，从未实测。跳过 R23 意味着：只改
+  # README/CHANGELOG 却没同步 docs/ 里的尺寸数字时，CI 发布照样通过，缺口由此产生。
+  # 现在改为在 CI 也跑：若字节真的跨环境稳定，这条假设不成立，缺口自然消失；
+  # 若真的漂移，r23.cjs 会把 CI 实测值打印出来，据实判断该改断言还是该保留跳过。
+  chk R23 "node '${pack_tmp}/r23.cjs' '${pack_tmp}/pack.json'"
 else
   todo A7 "npm 不可用或 npm pack 失败（见 ${pack_tmp}/pack.err）"
   todo R1 "npm 不可用或 npm pack 失败"
