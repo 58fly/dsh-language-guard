@@ -36,7 +36,7 @@ jobs:
       - name: 安装依赖
         run: npm ci
 
-      - name: 测试（CI 模式：R23 跳过，R16 跳过 prepublishOnly）
+      - name: 测试（CI 模式：R23 只断言 unpackedSize，R16 跳过 prepublishOnly）
         env:
           LG_CI: '1'
         run: npm test

@@ -10,15 +10,17 @@ name: test
 #
 # 为什么这里不跑 scripts/verify-checklist.sh 的完整判据：
 #
-# 它以 LG_CI=1 运行（见最后一步）。CI 模式只降级两条与环境绑定的判据：
+# 它以 LG_CI=1 运行（见最后一步）。CI 模式只调整两条与环境绑定的判据：
 #
 # - R16 执行 `npm publish --dry-run`，会触发 prepublishOnly
 #   → scripts/verify-release.mjs，后者要求本地存在 v<version> tag。
 #   checkout 默认不拉 tag，PR 上更是必然没有，故 CI 用 `--ignore-scripts` 跳过
 #   prepublishOnly，只保留 npm 自身的打包/白名单/名称校验。
-# - R23 是打包体积的精确字节断言，而 `npm pack` 的产物字节随 npm 版本变化，
-#   跨机器不可移植，CI 里打印 SKIP 而不是假红。
-# 这两条仍由本机发布流程（npm test）承担；其余 72 项在 CI 里真跑。
+# - R23 断言打包体积。`size` 是 gzip 后的字节数，受 zlib 版本影响（实测同一 commit
+#   本机 63634 / CI 63632）；`unpackedSize` 是文件内容原始字节总和，与压缩器无关
+#   （实测两边同为 186818）。故 CI 只断言 unpackedSize，仍能守住
+#   「改了进包文件却没同步文档数字」这个缺口。
+# 其余 74 项在 CI 里真跑，汇总行与本机一致，没有 SKIP 段。
 
 on:
   push:
@@ -54,7 +56,7 @@ jobs:
       - name: 清单与打包元数据
         run: node scripts/verify-manifest.mjs
 
-      - name: 验收清单（CI 模式：R23 跳过，R16 跳过 prepublishOnly）
+      - name: 验收清单（CI 模式：R23 只断言 unpackedSize，R16 跳过 prepublishOnly）
         env:
           LG_CI: '1'
         run: bash scripts/verify-checklist.sh
