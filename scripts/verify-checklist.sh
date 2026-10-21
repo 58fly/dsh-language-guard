@@ -5,6 +5,12 @@
 #   bash scripts/verify-checklist.sh; echo "exit=$?"
 # 注意：不要用管道截取输出（`| tail` 会把退出码换成 tail 的），要看退出码就单独 echo $?。
 #
+# CI 模式：LG_CI=1 bash scripts/verify-checklist.sh
+#   只降级两条与环境绑定的判据，其余照常跑：
+#   - R16 加 --ignore-scripts，跳过 prepublishOnly 的 tag 校验（CI checkout 默认不拉 tag）
+#   - R23 打印 SKIP，因为打包字节数随 npm 版本漂移，跨机器不可移植
+#   两条都仍由本机发布流程（npm test）承担，所以 CI 绿不代表它们通过了。
+#
 # 退出码：
 #   0  机械可判项全部通过
 #   1  存在真实不通过项（必须修）
@@ -26,7 +32,11 @@ pkg=package.json
 pass=0
 fail=0
 missing=0
+skipped=0
 stub_dirs=""
+# CI 模式：GitHub Actions 里 checkout 默认不拉 tag，npm 版本也可能与本机不同，
+# 因此 R16 / R23 两条与环境绑定的判据要各自降级（详见下方 npm 产物判据段）。
+ci_mode="${LG_CI:-0}"
 # npm 相关判据（A7 / R1 / R2 / R16）的临时目录。
 # 必须显式给 --cache：本机 ~/.npm 存在 root-owned 文件，不指定会 EPERM（npm error code EPERM /
 # path ~/.npm/_cacache/tmp/...）。指定到临时目录后 npm pack / publish --dry-run 均可用。
@@ -74,6 +84,11 @@ chk() { # chk <条目> <命令>；失败时把命令自身的诊断输出缩进�
 todo() { # todo <条目> <说明>
   echo "TODO $1 (尚未实现：$2)"
   missing=$((missing + 1))
+}
+
+note() { # note <条目> <说明>：本条在当前运行环境下不适用，跳过但不计入通过/未实现
+  echo "SKIP $1 ($2)"
+  skipped=$((skipped + 1))
 }
 
 if [ ! -f "$pkg" ]; then
@@ -547,8 +562,22 @@ if [ "${npm_ok}" = 1 ]; then
   chk A7 "node '${pack_tmp}/a7.cjs' '${pack_tmp}/pack.json' \"\$(pwd)/${pkg}\""
   chk R1 "node '${pack_tmp}/r1.cjs' '${pack_tmp}/pack.json'"
   chk R2 "npm pack --cache '${npm_cache}' --pack-destination '${pack_tmp}' >/dev/null 2>&1 && node '${pack_tmp}/r2.cjs' '${pack_tmp}'"
-  chk R16 "npm publish --dry-run --cache '${npm_cache}' >'${pack_tmp}/pub.log' 2>&1; ! grep -q 'npm error' '${pack_tmp}/pub.log'"
-  chk R23 "node '${pack_tmp}/r23.cjs' '${pack_tmp}/pack.json'"
+  # R16 测的是「npm 侧打包/白名单/名称校验全绿」。本地跑完整链路（含 prepublishOnly
+  # → verify-release.mjs 的 tag 校验）；CI 里 checkout 默认不拉 tag，那条校验必然失败，
+  # 故 CI 用 --ignore-scripts 跳过 prepublishOnly，只保留 npm 自身的校验。
+  # --ignore-scripts 只用于这里的 dry-run 测试；真实 npm publish 仍由 prepublishOnly 把守，
+  # AGENTS.md 明确禁止在真实发布时使用它。
+  if [ "${ci_mode}" = 1 ]; then
+    chk R16 "npm publish --dry-run --ignore-scripts --cache '${npm_cache}' >'${pack_tmp}/pub.log' 2>&1; ! grep -q 'npm error' '${pack_tmp}/pub.log'"
+  else
+    chk R16 "npm publish --dry-run --cache '${npm_cache}' >'${pack_tmp}/pub.log' 2>&1; ! grep -q 'npm error' '${pack_tmp}/pub.log'"
+  fi
+  # R23 是打包体积的精确字节断言；npm pack 的产物字节随 npm 版本变化，跨机器不可移植。
+  if [ "${ci_mode}" = 1 ]; then
+    note R23 "CI 的 npm 版本与本机不同，精确字节断言不可移植；仍由本机发布流程承担"
+  else
+    chk R23 "node '${pack_tmp}/r23.cjs' '${pack_tmp}/pack.json'"
+  fi
 else
   todo A7 "npm 不可用或 npm pack 失败（见 ${pack_tmp}/pack.err）"
   todo R1 "npm 不可用或 npm pack 失败"
@@ -573,6 +602,9 @@ chk R12 "node -e \"const k=require('./${pkg}').keywords||[];process.exit(k.inclu
 
 # ---- 汇总（结论同时写 stdout 与 stderr，管道截断时仍能看到） ----------------
 summary="PASS ${pass}   FAIL ${fail}   TODO(尚未实现) ${missing}"
+if [ "${skipped}" -gt 0 ]; then
+  summary="${summary}   SKIP(环境不适用) ${skipped}"
+fi
 echo "----"
 echo "${summary}"
 

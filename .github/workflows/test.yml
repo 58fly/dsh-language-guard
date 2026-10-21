@@ -8,14 +8,17 @@ name: test
 #    CI 用 `npm ci` 装 devDependencies，这些判据才真的执行。
 # 2. 工作区天然干净，不会因为本地残留的 node_modules / 临时文件而假绿。
 #
-# 为什么这里不跑 scripts/verify-checklist.sh：
+# 为什么这里不跑 scripts/verify-checklist.sh 的完整判据：
 #
-# - 它的 R16 执行 `npm publish --dry-run`，会触发 prepublishOnly
-#   → scripts/verify-release.mjs，后者要求 HEAD 上存在 v<version> tag。
-#   CI 检出的 commit 在 PR 上必然没有 tag，R16 会假红。
-# - 它的 R23 是打包体积的精确字节断言，而 `npm pack` 的产物字节随 npm 版本变化，
-#   跨机器会假红。
-# 这两项仍由本机发布流程（npm test）承担；等 CI 稳定跑几轮后再考虑引入。
+# 它以 LG_CI=1 运行（见最后一步）。CI 模式只降级两条与环境绑定的判据：
+#
+# - R16 执行 `npm publish --dry-run`，会触发 prepublishOnly
+#   → scripts/verify-release.mjs，后者要求本地存在 v<version> tag。
+#   checkout 默认不拉 tag，PR 上更是必然没有，故 CI 用 `--ignore-scripts` 跳过
+#   prepublishOnly，只保留 npm 自身的打包/白名单/名称校验。
+# - R23 是打包体积的精确字节断言，而 `npm pack` 的产物字节随 npm 版本变化，
+#   跨机器不可移植，CI 里打印 SKIP 而不是假红。
+# 这两条仍由本机发布流程（npm test）承担；其余 72 项在 CI 里真跑。
 
 on:
   push:
@@ -50,3 +53,8 @@ jobs:
 
       - name: 清单与打包元数据
         run: node scripts/verify-manifest.mjs
+
+      - name: 验收清单（CI 模式：R23 跳过，R16 跳过 prepublishOnly）
+        env:
+          LG_CI: '1'
+        run: bash scripts/verify-checklist.sh
