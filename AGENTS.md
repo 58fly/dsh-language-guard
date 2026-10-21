@@ -22,13 +22,20 @@ git commit -m "release: X.Y.Z —— <一句话说明>"
 # 3. 再打 tag（tag 必须与 package.json 版本一致，格式 vX.Y.Z）
 git tag vX.Y.Z
 
-# 4. 推送 commit 与 tag
+# 4. 推送 commit 与 tag —— 推 tag 会触发 GitHub Actions 自动发布
 git push origin main
 git push origin vX.Y.Z
 
-# 5. 最后才发布（prepublishOnly 会再次强制校验前三步）
-npm publish
+# 5. 等 CI 发布完，做三方对齐自检
+npm run verify:release --verify
 ```
+
+推 tag 后由 `.github/workflows/publish.yml` 在干净环境里跑 `npm ci` + `npm test`，
+全绿才 `npm publish`（`NPM_TOKEN` 来自仓库 secret）。发布门禁仍是 `prepublishOnly`
+→ `scripts/verify-release.mjs`，工作区干净、tag 存在、tag 之后进包内容未变，三条都不放宽。
+
+本机手动 `npm publish` 仍然可行（紧急情况），但不再是常规路径——CI 跑的是同一份测试，
+且能保证发布环境干净。
 
 ### 禁止事项
 
