@@ -37,7 +37,7 @@ Measured on DSH 0.2.1-rc.2 (everything after order 50): **98.1% of the character
 
 A single "please answer in Chinese" line at the very top of the system prompt is enough for a short session. It is not enough for a long one, because that line sits tens of thousands of characters away from the place that actually influences the model (the tool documentation).
 
-This plugin puts a constraint in **three places**: at the very start, right after the tool documentation, and at the very end. The default level (Strong) costs roughly 118 extra characters per request and buys one restatement positioned after the English tool docs.
+This plugin puts a constraint in **three places**: at the very start, right after the tool documentation, and at the very end. The default level (Strong) costs roughly 146 extra characters per request and buys one restatement positioned after the English tool docs.
 
 ## What it does
 
@@ -49,18 +49,27 @@ Three resident system-prompt sections, registered through `ctx.systemPrompt.sect
 | `language-guard:mid` | `5100` | After all tool docs (`tools:sdk`, `5000`), before deliverable references (`9000`) | ❌ | ✅ | ✅ |
 | `language-guard:tail` | `11200` | Very last, after `deployment:persona-suffix` (`10200`) | ✅ | ✅ | ✅ |
 
+The constraint covers **four language channels** (the fourth landed in 0.3.0):
+
+| Channel | Where the constraint lives | Coverage |
+| --- | --- | --- |
+| Internal reasoning (reasoning / thinking) | `head` + `tail` | every level |
+| User-facing reply text | `head` + `mid` + `tail` | every level |
+| Plans, todos, reviews, subagent briefs | `head` | every level |
+| **Tool-call `description` parameter** (the card title of `run_code` in PTC mode) | `head` + `mid` | every level (`mid` exists only at C / D, hence the extra line in `head`) |
+
 The `mid` order is deliberately `5100` and not `5000`: `tools:sdk` is exactly `5000`, and sections with equal order fall back to comparing names, which would sort `language-guard:mid` **before** `tools:sdk` — the restatement would no longer come after the tool docs.
 
 Measured text sizes (Simplified Chinese, counted in characters; recompute with `node` as shown below):
 
 | Text | Characters | When it is present |
 | --- | --- | --- |
-| head | 818 | every request |
-| mid | 118 | every request at C / D |
+| head | 883 | every request |
+| mid | 146 | every request at C / D |
 | tail | 139 | every request |
 | periodic reminder | 99 | once every N turns at D |
 
-So the steady cost per step is **957 characters at B and 1075 at C** — tiny compared to the English tool documentation it counteracts.
+So the steady cost per step is **1022 characters at B and 1168 at C** — tiny compared to the English tool documentation it counteracts.
 
 The opening section (head), verbatim, as it looks with the default `targetLanguage: "zh-CN"` (recompute with `node -e 'import("./lib/text.js").then(m=>console.log(m.headText({language:"zh-CN"})))'`):
 
@@ -166,7 +175,7 @@ Behaviour differences:
 
 How to choose:
 
-- **Start with the default, Strong.** It is the only level aimed at the actual root cause (English tool docs), and it costs about 118 characters per step.
+- **Start with the default, Strong.** It is the only level aimed at the actual root cause (English tool docs), and it costs about 146 characters per step.
 - **Short sessions, or every token counts** → drop to **Basic**. Start and end constraints are enough for a 3–5 turn session.
 - **Sessions that run dozens of turns, or you have already seen reasoning slide back into English** → raise to **Periodic**. Smaller N means more frequent reminders; the default 8 is a compromise. N = 3 is noisy.
 
@@ -338,7 +347,7 @@ At Strong (or Periodic) you should see `sections=3/3`.
 1. Switch Strength to Basic and send another message.
 2. Re-run the command from step 2.
 
-The new system node should report `sections=2/3` — the missing one is `【语言锁定 · 中段重申】` — and its length should be **118 characters shorter** than the previous node, exactly the size of the mid section (see [What it does](#what-it-does)). At Basic, `language-guard:mid` returns an empty string, and `renderPrompt` filters empty text out, so no empty section or stray blank line is left behind.
+The new system node should report `sections=2/3` — the missing one is `【语言锁定 · 中段重申】` — and its length should be **146 characters shorter** than the previous node, exactly the size of the mid section (see [What it does](#what-it-does)). At Basic, `language-guard:mid` returns an empty string, and `renderPrompt` filters empty text out, so no empty section or stray blank line is left behind.
 
 ### Extra checks
 
@@ -394,12 +403,13 @@ The two are **complementary, not competing**: one decides what language the mode
 - **The constraint wording is fixed Simplified Chinese.** Only the language name and code are substituted, so with `targetLanguage: "en"` the injected text reads "…一律使用English（语言代码 en）". Models handle this fine, but the prose is not localized. Localizing the templates is a future change.
 - **The Periodic reminder is visible in the chat UI**, collapsed into one line reading "上下文注入 · language-guard · 语言自检". The English identifier `language-guard` **cannot be hidden** — the client renders `source.kind` verbatim as the injection label, exactly as it does for the official `agent-instructions` and `skill-invocation`. Localizing it would require a custom `conversation.chat.node` renderer for the context node; the first release does not do that.
 - **The Client half has no turn counter**, so the panel cannot show "the next injection lands on turn X".
-- **The quick switch menu holds only five presets.** Custom BCP-47 tags must be typed into the settings field (the menu still shows the current custom code verbatim, so configuration never looks lost).
+- **The quick switch menu lists five presets plus one "Custom" entry.** Custom BCP-47 tags must be typed into the settings field; in Manual mode with a value outside the presets, the menu gains a checked "Custom: <language>" entry so that six unchecked rows no longer look like "nothing was ever set". The menu cannot enumerate arbitrary tags — switching to another custom value still goes through the settings field.
 - **It does not override an explicit user instruction.** The head section says that asking in English does not change the constraint, but if the user explicitly asks for an English answer *this time*, the model should comply. The plugin declares a default at the system level; it does not overrule a per-turn explicit instruction.
 - **It cannot detect whether `dsh-context` is installed**, so the hint is permanent (see above).
 - **Periodic never wakes an idle session.** `agent/pre-step` only fires while a turn is running, so no message means no reminder — a language guard should not generate conversation on its own.
 - **The `mid` position could be squeezed by future plugins.** If another plugin inserts a section between order `5000` and `9000`, the "after the tool docs" semantics get diluted. The fix then is to raise `mid` to `8900` (still before deliverable references at `9000`); failing that, fall back to Basic, which does not depend on `mid`.
 - **It cannot tell Simplified from Traditional Chinese.** DSH ships exactly two built-in interface languages, `zh` and `en` (`dsh-client-locale/lib/index.js:11`, `LOCALE_IDS = ["zh", "en"]`), and `zh` does not distinguish the two scripts — while the Host side cannot see the system language. So when the interface language is Chinese, auto mode always resolves to `zh-CN`. Users who need Traditional output should switch the language mode to Manual and pick `zh-TW`. The same holds for Japanese and Korean: on a standard install auto mode can only resolve to `zh-CN` or `en`, so pick 日本語 / 한국어 manually — if you installed the matching external language pack, its tag is passed through as-is.
+- **It does not cover the API `tools` parameter itself.** The real tool schema sent to the model lives in the request's `tools` parameter, not in the system prompt; this plugin only asks the model, on the prompt side, to write the `description` parameter in the target language. It cannot rewrite the English wording in the schema. If the model does not comply, tool card titles stay English — an inherent limit of a prompt-level constraint, not a configuration problem.
 - **It does not follow the operating-system language.** The plugin reads the interface language you selected in DSH settings, not the OS language. DSH's Host process runs with `ELECTRON_RUN_AS_NODE=1`, so Electron's `app.getLocale()` is out of reach; Node's `Intl` in that process always reports `en-US`, which would misclassify Chinese users as English — so we chose not to use it.
 - **Auto mode follows the interface language, not the language you type in.** With a Simplified Chinese UI, asking in English still gets a Simplified Chinese constraint — that is the design: the plugin declares a default language, it does not guess from a single turn. Switch to Manual if you want it to track your input.
 - **Switching level changes the system prompt**, so DSH appends a new system node (an in-history replacement). That is a one-off token cost and expected behaviour.

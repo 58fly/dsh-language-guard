@@ -13,19 +13,19 @@
 
 | 档位 | 键 | 中文名 | 英文名 | 组成 | 相对成本 |
 |---|---|---|---|---|---|
-| 基础 | `B` | 基础 | Basic | head + tail 两段常驻 | 约 957 字符/步（head 818 + tail 139） |
-| 强化 | `C` | 强化 | Strong | head + mid + tail 三段常驻 | 约 1075 字符/步（比 B 多 mid 的 118） |
-| 周期 | `D` | 周期 | Periodic | C 档三段 + 每 N 轮在 `agent/pre-step` 追加一条提醒消息 | 约 1075 字符/步 + 每 N 轮约 99 字符（提醒正文 99 字符） |
+| 基础 | `B` | 基础 | Basic | head + tail 两段常驻 | 约 1022 字符/步（head 883 + tail 139） |
+| 强化 | `C` | 强化 | Strong | head + mid + tail 三段常驻 | 约 1168 字符/步（比 B 多 mid 的 146） |
+| 周期 | `D` | 周期 | Periodic | C 档三段 + 每 N 轮在 `agent/pre-step` 追加一条提醒消息 | 约 1168 字符/步 + 每 N 轮约 99 字符（提醒正文 99 字符） |
 
 > 上表数字为 `lib/text.js` 实测字符数（`headText({ language: 'zh-CN', preserveCodeTerms: true })`、无 `extraRules`/`overrideHead`）。复算命令：
 > ```bash
 > node --input-type=module -e 'import("./lib/text.js").then(m=>{const a=m.headText({language:"zh-CN"}),b=m.midText({language:"zh-CN"}),c=m.tailText({language:"zh-CN"}),d=m.reminderText({language:"zh-CN"});console.log(a.length,b.length,c.length,d.length)})'
-> # → 818 118 139 99
+> # → 883 146 139 99
 > ```
 > **注意**：`headText` 的形参名是 `language`，不是 `targetLanguage`（后者是 Config 字段名）。传错参数名会让 `⟨LANG⟩` 占位符未被替换，得到「语言代码 undefined」——曾因此把 head 长度误算成 556，**必须传 `language`**。
 >
 > 早期版本此处写的是估算值 200/350/110，后又因形参名传错写成 556/670/790，均已按实测更正。
-> **0.1.1 起 head 818 / tail 139**：约束文本新增「优先于 AGENTS.md 一类语言约定」段落（见 3.1 节），长度因此增长。验收时以本表为准。
+> **0.3.0 起 head 883 / mid 146 / tail 139 / reminder 99**（B=1022、C=1168）：head 与 mid 各新增一句「工具调用描述用目标语言书写」的约束（见 3.2 节），长度因此增长。0.1.1 时 head 为 818。验收时以本表为准。
 
 默认档位：**`C`（强化）**。默认目标语言：**`zh-CN`（简体中文）**。
 
@@ -320,7 +320,7 @@ DSH 插件 `Config` 用的是 **`@deepseek-ai/schemastery`**（习惯性 `import
 | 字段 | 默认 | 理由 |
 |---|---|---|
 | `targetLanguage` | `zh-CN` | 本项目定位与地图票一致（默认简体中文）；`zh-CN` 是 BCP-47 最通用的简体标签，映射到「简体中文」。 |
-| `strength` | `C` | 默认必须「装完即有效」。B 只靠首尾两段，在工具输出密集的长会话中仍会漂移：实测 92 个历史会话的 system prompt 长度 min 5794 / median 7063 / p75 11423 / max 51247（典型 6–11K），其中 `500–5000` 段是全部工具说明与 AgentTeams / Web GUI 协议，99% 以上是英文，正是 head 与 tail 之间的空档。C 的 mid 段正对这个根因，成本约 +118 字符/步（实测 mid 正文长度），可忽略。D 会写会话日志，默认开启会打扰用户，故不设为默认。 |
+| `strength` | `C` | 默认必须「装完即有效」。B 只靠首尾两段，在工具输出密集的长会话中仍会漂移：实测 92 个历史会话的 system prompt 长度 min 5794 / median 7063 / p75 11423 / max 51247（典型 6–11K），其中 `500–5000` 段是全部工具说明与 AgentTeams / Web GUI 协议，99% 以上是英文，正是 head 与 tail 之间的空档。C 的 mid 段正对这个根因，成本约 +146 字符/步（实测 mid 正文长度），可忽略。D 会写会话日志，默认开启会打扰用户，故不设为默认。 |
 | `injectEveryNRounds` | `8` | 范围 3–50。N 太小（≤3）会把提醒变成噪音并显著增加日志条数；N 太大（≥20）在漂移已发生后才有提醒。8 轮是「漂移可被观测到」的量级，且与一次长任务的典型轮数同阶。 |
 | `preserveCodeTerms` | `true` | 目标用户是技术用户，代码与命令必须可复制执行；关掉会让输出不可运行。 |
 | `extraRules` | `""` | 默认不注入任何用户自定义内容，保证开箱行为可预测、可复现。 |

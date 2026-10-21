@@ -189,6 +189,10 @@ window.__ModuleLoader__.load({
       'mode.source.fallback': '未识别到界面语言，用配置值兜底',
       'mode.migrated': '检测到你曾手动设置过目标语言，已保持手动模式。',
       'mode.traditionalHint': 'DSH 内置语言只有「简体中文」与「English」，界面语言为简体时无法自动判断简繁；需要繁体请切到「手动」并选 zh-TW。',
+      'status.effective': '生效语言：{language}（{code}） · 来源：{source}',
+      'status.fallbackWarn': '未识别到界面语言，当前用配置值 {code} 兜底；如需固定语言，请切到「手动」。',
+      'status.switchManual': '切到手动',
+      'quick.menu.custom': '当前自定义：{label}',
       'language.autoDisabled': '自动模式下不可编辑；切到「手动」即可自定义。',
       'quick.menu.auto': '自动（跟随界面语言）',
       'quick.menu.autoHint': '当前自动解析为 {label}',
@@ -253,6 +257,10 @@ window.__ModuleLoader__.load({
       'mode.source.fallback': 'interface language not detected, using the configured value',
       'mode.migrated': 'You previously set a target language manually, so manual mode is kept.',
       'mode.traditionalHint': 'DSH ships only Simplified Chinese and English as UI languages, so Traditional Chinese cannot be detected automatically; switch to Manual and pick zh-TW.',
+      'status.effective': 'Active language: {language} ({code}) · Source: {source}',
+      'status.fallbackWarn': 'Interface language not detected; falling back to the configured value {code}. Switch to Manual to pin a language.',
+      'status.switchManual': 'Switch to Manual',
+      'quick.menu.custom': 'Custom: {label}',
       'language.autoDisabled': 'Not editable in auto mode; switch to Manual to customize.',
       'quick.menu.auto': 'Auto (follow the UI language)',
       'quick.menu.autoHint': 'Currently auto-resolved to {label}',
@@ -353,6 +361,10 @@ window.__ModuleLoader__.load({
 .lg-mode-source { margin: 0; font-size: 12px; line-height: 1.5; color: var(--dsw-alias-label-tertiary); }
 .lg-mode-migrated { margin: 0; font-size: 12px; line-height: 1.5; color: var(--dsw-alias-state-warn-primary); }
 .lg-notice { margin: 0; padding-top: 12px; border-top: 1px solid var(--dsw-alias-border-l1); font-size: 12px; line-height: 1.5; color: var(--dsw-alias-label-tertiary); }
+.lg-effective { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 8px; }
+.lg-effective-line { margin: 0; font-size: 12px; line-height: 1.5; color: var(--dsw-alias-label-secondary); }
+.lg-effective-warn { margin: 0; font-size: 12px; line-height: 1.5; color: var(--dsw-alias-state-warn-primary); }
+.lg-button-inline { padding: 2px 8px; font-size: 12px; }
 .lg-root { position: relative; display: inline-flex; }
 .lg-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 12px; cursor: pointer; }
 .lg-trigger:hover { background: var(--dsw-alias-interactive-bg-hover); }
@@ -867,6 +879,41 @@ window.__ModuleLoader__.load({
 
         readOnly ? h('p', { className: 'lg-status', role: 'status' }, t('state.readOnly')) : null,
 
+        // 全局「当前生效」状态行：用户不必靠观察输出猜插件有没有生效
+        // （issues #11：切了语言没反应，无从判断）。复用 resolveSource 的结果，
+        // 不新增任何解析逻辑；fallback 态额外给一键切手动入口。
+        h(
+          'div',
+          { className: 'lg-effective', role: 'status' },
+          h(
+            'p',
+            { className: 'lg-effective-line' },
+            t('status.effective', {
+              language: languageLabel(resolved),
+              code: resolved,
+              source: t('mode.source.' + source),
+            }),
+          ),
+          source === 'fallback'
+            ? h(
+                'p',
+                { className: 'lg-effective-warn' },
+                t('status.fallbackWarn', { code: resolved }),
+                ' ',
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'lg-button lg-button-inline',
+                    disabled: readOnly,
+                    onClick: () => setField('languageMode', MODE_MANUAL),
+                  },
+                  t('status.switchManual'),
+                ),
+              )
+            : null,
+        ),
+
         ModeField({
           value: mode,
           migrated,
@@ -1129,9 +1176,14 @@ window.__ModuleLoader__.load({
       const resolvedLabel = languageLabel(resolved);
       // 触发按钮显示「实际生效的语言」：自动态显示解析结果，而不是配置里的占位值
       const shownLabel = auto ? resolvedLabel : label;
-      // 菜单项：第 1 项固定是「自动」，其后是 5 个预设
+      // 菜单项：第 1 项固定是「自动」，其后是 5 个预设。
+      // 手动模式且目标语言不在预设内（如 fr、zh-Hans）时，追加一条「当前自定义」项——
+      // 否则六项全无勾选，用户会读成「我没设过语言」。
+      const presetItems = PRESETS.map((preset) => ({ kind: 'preset', id: preset.code, preset }));
+      const isCustom = !auto
+        && !PRESETS.some((preset) => preset.code.toLowerCase() === code.toLowerCase());
       const items = [{ kind: 'auto', id: '__auto__' }].concat(
-        PRESETS.map((preset) => ({ kind: 'preset', id: preset.code, preset })),
+        isCustom ? presetItems.concat([{ kind: 'custom', id: code }]) : presetItems,
       );
 
       const [open, setOpen] = React.useState(false);
@@ -1319,7 +1371,11 @@ window.__ModuleLoader__.load({
                   h(
                     'span',
                     { className: 'lg-menu-label' },
-                    isAuto ? t('quick.menu.auto') : t(item.preset.labelKey),
+                    isAuto
+                      ? t('quick.menu.auto')
+                      : item.kind === 'custom'
+                        ? t('quick.menu.custom', { label: languageLabel(item.id) })
+                        : t(item.preset.labelKey),
                   ),
                   isAuto
                     ? null

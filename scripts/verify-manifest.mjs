@@ -334,9 +334,11 @@ chk('R3 files 非空', () => {
 });
 chk('R4 无安装期脚本', () => {
   const scripts = pkg.scripts || {};
+  // prepublishOnly 只在 `npm publish` 时执行，用户 install 本包时不会跑，
+  // 不属于安装期脚本；其余 install/prepare/prepublish 会在 install 时执行，一律禁止。
   assert(
-    !Object.keys(scripts).some((key) => /install|prepare|prepublish/.test(key)),
-    '不得声明 install/prepare/prepublish 类脚本',
+    !Object.keys(scripts).some((key) => /install|prepare|prepublish/.test(key) && key !== 'prepublishOnly'),
+    '不得声明 install/prepare/prepublish 类脚本（prepublishOnly 除外）',
   );
 });
 chk('R12 keywords', () => {

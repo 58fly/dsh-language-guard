@@ -275,7 +275,7 @@ fi
 # F18：四段文本字符数与 docs/decisions/01-mechanism.md 第 0 节表格一致。
 # 该数字曾被算成 556（形参名传成 targetLanguage，⟨LANG⟩ 未替换）与估算值 200/350/110，故必须复算。
 if [ -f lib/text.js ]; then
-  chk F18 "node --input-type=module -e \"const m=await import('./lib/text.js');const h=m.headText({language:'zh-CN'}),d=m.midText({language:'zh-CN'}),t=m.tailText({language:'zh-CN'}),r=m.reminderText({language:'zh-CN'});const ok=h.length===818&&d.length===118&&t.length===139&&r.length===99&&h.length+t.length===957&&h.length+d.length+t.length===1075;if(!ok)console.log('实际',h.length,d.length,t.length,r.length,'B='+(h.length+t.length),'C='+(h.length+d.length+t.length));process.exit(ok?0:1)\""
+  chk F18 "node --input-type=module -e \"const m=await import('./lib/text.js');const h=m.headText({language:'zh-CN'}),d=m.midText({language:'zh-CN'}),t=m.tailText({language:'zh-CN'}),r=m.reminderText({language:'zh-CN'});const ok=h.length===883&&d.length===146&&t.length===139&&r.length===99&&h.length+t.length===1022&&h.length+d.length+t.length===1168;if(!ok)console.log('实际',h.length,d.length,t.length,r.length,'B='+(h.length+t.length),'C='+(h.length+d.length+t.length));process.exit(ok?0:1)\""
 else
   todo F18 "缺少 lib/text.js"
 fi
