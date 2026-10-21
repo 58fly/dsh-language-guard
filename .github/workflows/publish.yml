@@ -13,6 +13,9 @@ name: publish
 on:
   push:
     tags: ['v*']
+  # 手动触发：发布失败后重跑，或在不打新 tag 的前提下验证这条流水线本身。
+  # 注意它执行的是真实的 `npm publish`；当前版本已发布时会以 E403 失败，属预期。
+  workflow_dispatch:
 
 jobs:
   publish:
