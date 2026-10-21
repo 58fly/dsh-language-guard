@@ -54,19 +54,21 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-# 只看「代码行」的 grep：排除整行注释（* / // / /* 开头），避免注释里写了自己该满足的约束造成假通过。
+# 只看「代码行」的匹配：排除整行注释（* / // / /* 开头），避免注释里写了自己该满足的约束造成假通过。
 # hits <ERE> <路径...>：存在代码行命中返回 0
 # hits_n <ERE> <路径...>：代码行命中次数（按出现次数计）
+#
+# 匹配逻辑放在 scripts/grepcode.mjs，不再用 grep 管道。原因：这套管道依赖三处实现相关的行为——
+# `-r` 是否加 `file:line:` 前缀、`-o` 与 `-E` 的组合、ERE 里 `\*` / `\,` 这类未定义转义。
+# 在 macOS（BSD grep）上 74 项全过，到 CI（GNU grep）上 C9 与 M12 各错一边，且本地无法复现。
+# 改用 node 后两个平台执行同一份代码，本地验过的结果在 CI 必然一致。
+script_dir=$(cd "$(dirname "$0")" && pwd)
+grepcode="${script_dir}/grepcode.mjs"
 hits() {
-  local re="$1"; shift
-  grep -rnE "$re" "$@" 2>/dev/null | grep -vE ':[0-9]+:[[:space:]]*(\*|//|/\*)' | grep -q .
+  node "$grepcode" "$@" >/dev/null 2>&1
 }
 hits_n() {
-  local re="$1"; shift
-  grep -rnE "$re" "$@" 2>/dev/null \
-    | grep -vE ':[0-9]+:[[:space:]]*(\*|//|/\*)' \
-    | sed -E 's/^[^:]+:[0-9]+://' \
-    | grep -oE "$re" | wc -l | tr -d ' '
+  node "$grepcode" --count "$@" 2>/dev/null | tr -d ' '
 }
 
 chk() { # chk <条目> <命令>；失败时把命令自身的诊断输出缩进打印（如 F18 的「实际 …」）
