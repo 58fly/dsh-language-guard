@@ -1393,7 +1393,24 @@ window.__ModuleLoader__.load({
      * @param {any} ctx Client 上下文
      */
     function apply(ctx) {
-      ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'language-guard: dictionaries');
+      // locale 是可选项：宿主没装 locale 插件、或该插件晚于本插件就绪时，
+      // `ctx.locale` 可能是 undefined。`bindTranslator` 已内置中文字典回退，
+      // 所以这里缺失只影响 UI 语言，不该让整个 apply 抛错。
+      if (ctx.locale && typeof ctx.locale.register === 'function') {
+        ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'language-guard: dictionaries');
+      }
+
+      // configForms 缺失（或残缺到没有 whileServed）时，两个槽都无法判定是否该出现。
+      // 约定：整体不注册，只留一条告警，避免"插件装了但面板空白"这种无从排查的静默失效。
+      if (!ctx.configForms || typeof ctx.configForms.whileServed !== 'function') {
+        if (typeof console !== 'undefined' && console.warn) {
+          console.warn(
+            '[dsh-language-guard] configForms 服务不可用：设置卡片与侧栏快速切换均未注册。' +
+              '提示词注入不受影响（Host 半独立运行）。',
+          );
+        }
+        return;
+      }
 
       let form = null;
       try {
