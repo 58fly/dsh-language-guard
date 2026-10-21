@@ -4,6 +4,8 @@
 
 > Make the DSH agent think and answer in the language you choose — Simplified Chinese by default, three strength levels, effective on the next message, zero dependencies, no build step.
 
+<img src="https://raw.githubusercontent.com/58fly/dsh-language-guard/main/docs/images/settings-panel.webp" alt="Language Guard settings panel: language source (auto / manual), strength levels (basic / reinforced / periodic), target language, and the preserve-code-terms toggle" width="760">
+
 ---
 
 ## Table of Contents

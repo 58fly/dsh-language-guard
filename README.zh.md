@@ -4,6 +4,8 @@
 
 > 让 DSH 的智能体用你选定的语言思考与回复——默认简体中文，三档强度，下一条消息即生效，零依赖、零构建。
 
+<img src="https://raw.githubusercontent.com/58fly/dsh-language-guard/main/docs/images/settings-panel.webp" alt="语言守卫设置面板：语言来源（自动 / 手动）、强度档位（基础 / 强化 / 周期）、目标语言与保留代码原文开关" width="760">
+
 ---
 
 ## 目录
