@@ -17,6 +17,22 @@
 
 ---
 
+## [0.3.4] - 2026-10-21
+
+### 新增
+
+- **语言显示名表纳入自动校验。** 面板上显示的语言名（如「日本語」）与实际注入的语言是两张手抄的映射表，此前没有任何判据；表一旦分叉，面板会显示一种语言而实际注入另一种，用户看不出来。现在两侧逐条比对，键集合、顺序、显示名任一不同都会让测试失败。
+
+### 修复
+
+- **插件卸载后不再残留。** 新增真容器卸载验证：挂载后必须注册三段约束与（D 档）周期提醒监听，卸载后必须全部归零。此前这一层完全没有测试覆盖。
+
+### 变更
+
+- 新增 `devDependencies`（`@deepseek-ai/cordis`，仅测试用，不随包分发）。没有安装依赖的环境会跳过卸载验证并标注 TODO，不影响其余测试。
+
+---
+
 ## [0.3.3] - 2026-10-21
 
 ### 文档
@@ -152,7 +168,8 @@
 
 ---
 
-[未发布]: https://github.com/58fly/dsh-language-guard/compare/v0.3.3...HEAD
+[未发布]: https://github.com/58fly/dsh-language-guard/compare/v0.3.4...HEAD
+[0.3.4]: https://github.com/58fly/dsh-language-guard/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/58fly/dsh-language-guard/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/58fly/dsh-language-guard/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/58fly/dsh-language-guard/compare/v0.3.0...v0.3.1
