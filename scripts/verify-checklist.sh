@@ -6,10 +6,12 @@
 # 注意：不要用管道截取输出（`| tail` 会把退出码换成 tail 的），要看退出码就单独 echo $?。
 #
 # CI 模式：LG_CI=1 bash scripts/verify-checklist.sh
-#   只降级两条与环境绑定的判据，其余照常跑：
+#   只调整两条与环境绑定的判据，其余照常跑：
 #   - R16 加 --ignore-scripts，跳过 prepublishOnly 的 tag 校验（CI checkout 默认不拉 tag）
-#   - R23 打印 SKIP，因为打包字节数随 npm 版本漂移，跨机器不可移植
-#   两条都仍由本机发布流程（npm test）承担，所以 CI 绿不代表它们通过了。
+#   - R23 只断言 unpackedSize，不断言 size（size 是 gzip 后字节数，受 zlib 版本影响；
+#     实测同一 commit 本机 63634 / CI 63632，而 unpackedSize 两边同为 186818）
+#   因此 CI 汇总行与本机一致，没有 SKIP 段。但 CI 上 R23 少断言一个数——
+#   size 漂移只有本机跑 npm test 才会发现。
 #
 # 退出码：
 #   0  机械可判项全部通过
@@ -548,9 +550,22 @@ cat >"${pack_tmp}/r23.cjs" <<'R23EOF'
 //      正向断言只在「当前值没被写进文档」时失败，正是要防的那种漂移。
 const fs = require('fs');
 const actual = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'))[0];
+// CI 模式（第三个参数为 ci）：只断言 unpackedSize，不断言 size。
+// 实测依据（0.3.4，同一 commit）：本机 size=63634，CI size=63632，差 2 字节；
+// 而 unpackedSize 两边都是 186818，完全相同。原因是 size 是 gzip 压缩后的字节数，
+// 受 zlib 版本影响；unpackedSize 是文件内容原始字节总和，与压缩算法无关。
+// 保留 unpackedSize 断言就足以守住「改了进包文件却没同步文档数字」这个缺口——
+// 内容一变 unpackedSize 必变，与压缩器无关。
+const ciMode = process.argv[3] === 'ci';
 const need = [
-  { file: 'docs/发布说明.md', patterns: [actual.size + ' B', actual.unpackedSize + ' B'] },
-  { file: 'docs/实现说明.md', patterns: ['size: ' + actual.size, 'unpackedSize: ' + actual.unpackedSize] },
+  {
+    file: 'docs/发布说明.md',
+    patterns: ciMode ? [actual.unpackedSize + ' B'] : [actual.size + ' B', actual.unpackedSize + ' B'],
+  },
+  {
+    file: 'docs/实现说明.md',
+    patterns: ciMode ? ['unpackedSize: ' + actual.unpackedSize] : ['size: ' + actual.size, 'unpackedSize: ' + actual.unpackedSize],
+  },
 ];
 const bad = [];
 for (const item of need) {
@@ -577,12 +592,15 @@ if [ "${npm_ok}" = 1 ]; then
   else
     chk R16 "npm publish --dry-run --cache '${npm_cache}' >'${pack_tmp}/pub.log' 2>&1; ! grep -q 'npm error' '${pack_tmp}/pub.log'"
   fi
-  # R23 是打包体积的精确字节断言。此前一直假设「npm pack 的产物字节随 npm 版本变化，
-  # 跨机器不可移植」而在 CI 跳过——但那是推断，从未实测。跳过 R23 意味着：只改
-  # README/CHANGELOG 却没同步 docs/ 里的尺寸数字时，CI 发布照样通过，缺口由此产生。
-  # 现在改为在 CI 也跑：若字节真的跨环境稳定，这条假设不成立，缺口自然消失；
-  # 若真的漂移，r23.cjs 会把 CI 实测值打印出来，据实判断该改断言还是该保留跳过。
-  chk R23 "node '${pack_tmp}/r23.cjs' '${pack_tmp}/pack.json'"
+  # R23 是打包体积断言。实测（0.3.4，同一 commit）：本机 size=63634，CI size=63632，
+  # 差 2 字节；而 unpackedSize 两边都是 186818，完全相同。size 是 gzip 后的字节数，
+  # 受 zlib 版本影响；unpackedSize 是文件内容原始字节总和，与压缩器无关。
+  # 所以 CI 传入 ci 参数，只断言 unpackedSize —— 内容一变它必变，缺口仍被守住。
+  if [ "${ci_mode}" = 1 ]; then
+    chk R23 "node '${pack_tmp}/r23.cjs' '${pack_tmp}/pack.json' ci"
+  else
+    chk R23 "node '${pack_tmp}/r23.cjs' '${pack_tmp}/pack.json'"
+  fi
 else
   todo A7 "npm 不可用或 npm pack 失败（见 ${pack_tmp}/pack.err）"
   todo R1 "npm 不可用或 npm pack 失败"
