@@ -76,7 +76,13 @@ chk() { # chk <条目> <命令>；失败时把命令自身的诊断输出缩进�
     pass=$((pass + 1))
   else
     echo "FAIL $1"
-    if [ -n "${out}" ]; then printf '%s\n' "${out}" | head -5 | sed 's/^/       /'; fi
+    if [ -n "${out}" ]; then
+      printf '%s\n' "${out}" | head -5 | sed 's/^/       /'
+    else
+      # 静默失败是排查盲区：退出码非 0 却没有任何输出时，连命令是哪一段都看不出来。
+      # CI 上 C9 / M12 就是这样红的——日志只有一行 FAIL。这里补上命令首行（截断）。
+      printf '%s\n' "       (退出码非 0 且无输出) 命令：$(printf '%s' "$2" | head -1 | cut -c1-120)"
+    fi
     fail=$((fail + 1))
   fi
 }
@@ -243,7 +249,8 @@ run_lib C7 "hits \"ctx\\.on\\(['\\\"]agent/pre-step['\\\"]\" ${hostdir} \
 run_lib C8 "! hits 'setInterval' ${hostdir} || hits 'clearInterval' ${hostdir}"
 
 # C9：只数字段级调用（行首缩进 + `.volatile(),`），不把注释里的说明文字算进去。
-run_host C9 "[ \"\$(hits_n '^[[:space:]]*\.volatile\(\),' ${host})\" -eq 7 ] && python3 -c \"import yaml,sys;r=yaml.safe_load(open('cordis.patch.yml'))[0]['insert'][0];sys.exit(0 if set(r)=={'id','name'} else 1)\""
+# 两段都显式打印实际值：CI 上这条曾静默失败（无任何输出），排查时连是哪一段红的都看不出来。
+run_host C9 "c=\$(hits_n '^[[:space:]]*\.volatile\(\),' ${host}); [ \"\$c\" -eq 7 ] || { echo \"volatile 字段级调用数=\$c（期望 7）\"; exit 1; }; python3 -c \"import yaml,sys;r=yaml.safe_load(open('cordis.patch.yml'))[0]['insert'][0];ok=set(r)=={'id','name'};print('insert 键=',sorted(r)) if not ok else None;sys.exit(0 if ok else 1)\""
 
 run_lib C10 "! hits 'appendPluginRecord|session\.append' ${hostdir}"
 run_both C11 "! hits 'querySelector|innerHTML' ${hostdir} ${client}"
@@ -433,11 +440,7 @@ chk M11 "node '${m_tmp}/m11.cjs'"
 #      （dsh-client-locale/lib/client.js 的 resolveActive：preference === void 0 时返回
 #      provisional），英文系统用户会看到面板写「来自界面语言 · English」、实际注入简体中文。
 #      这条判据是那个缺陷的回归防护，删掉它等于允许面板撒谎。
-run_client M12 "hits 'configForms\\.get\\(UI_LOCALE_NS\\)' \${client} \
-  && hits 'UI_LOCALE_NS = .locale.' \${client} \
-  && hits 'preference' \${client} \
-  && ! hits 'locale\\.getSnapshot' \${client} \
-  && ! hits 'localeFace' \${client}"
+run_client M12 "for p in 'configForms\.get\(UI_LOCALE_NS\)' 'UI_LOCALE_NS = .locale.' 'preference'; do if ! hits \"\$p\" ${client}; then echo \"缺少: \$p\"; exit 1; fi; done; for p in 'locale\.getSnapshot' 'localeFace'; do if hits \"\$p\" ${client}; then echo \"不应出现: \$p\"; exit 1; fi; done"
 
 # M13：docs/验收清单.md 不得再嵌入脚本全文。
 #      0.2.0 期间清单里嵌入过脚本全文，随后脚本从 400 行长到 539 行，副本漂移 139 行
