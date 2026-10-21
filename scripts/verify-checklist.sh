@@ -491,7 +491,7 @@ cat >"${pack_tmp}/r1.cjs" <<'R1EOF'
 const fs = require('fs');
 const got = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'))[0].files.map((f) => f.path).sort();
 const want = [
-  'LICENSE', 'README.md', 'README.zh.md', 'client.js', 'cordis.patch.yml', 'icon.svg',
+  'CHANGELOG.md', 'LICENSE', 'README.md', 'README.zh.md', 'client.js', 'cordis.patch.yml', 'icon.svg',
   'lib/commands.js', 'lib/cycle.js', 'lib/index.js', 'lib/language.js', 'lib/state.js', 'lib/text.js',
   'locale/en.json', 'locale/zh.json', 'package.json',
 ];

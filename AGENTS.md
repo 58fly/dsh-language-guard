@@ -59,7 +59,10 @@ npm run verify:release          # 比对本地 / npm latest / git tag 三方一�
 
 ## 其他约束
 
+- **每个版本必须更新 `CHANGELOG.md`。** 新增一节 `## [X.Y.Z] - YYYY-MM-DD`，版本号与日期必须与 `package.json`、git tag 一致；分类固定用 新增 / 修复 / 变更 / 文档 / 移除；条目写「用户能感知到什么」，不写内部重构名词。
+  - `CHANGELOG.md` 随包分发（在 `files` 白名单内），给用户看；`docs/发布说明.md` 不随包分发，给维护者看（为什么改、复现步骤、连带列表）。**同一件事只写各自那层，两边不重复。**
+  - 该条暂无自动门禁：`prepublishOnly` 校验 tag 对齐，但不会解析 CHANGELOG 的标题格式。
 - 中文文案与英文文案必须同时更新（`README.md` / `README.zh.md` / `locale/*.json` / `client.js` 内联字典），键集合必须一致。
 - `lib/text.js` 的文本改动必须同步 `scripts/verify-checklist.sh` 的 F18 字符断言与 `docs/decisions/01-mechanism.md` 第 0 节表格。
-- `docs/` 不在 npm `files` 白名单内，改文档不影响打包产物；改 `README*`、`client.js`、`package.json`、`lib/` 会改变 pack 尺寸，需同步 `docs/发布说明.md` 与 `docs/实现说明.md` 里的实测值。
+- `docs/` 不在 npm `files` 白名单内，改文档不影响打包产物；改 `README*`、`client.js`、`package.json`、`lib/`、`CHANGELOG.md` 会改变 pack 尺寸，需同步 `docs/发布说明.md` 与 `docs/实现说明.md` 里的实测值（R23 会硬断言）。新增/删除发包文件时还要同步 `scripts/verify-checklist.sh` 的 R1 期望集合。
 - 密钥、token、cookie 一律不写入仓库文件。
