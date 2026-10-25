@@ -75,3 +75,7 @@ npm run verify:release          # 比对本地 / npm latest / git tag 三方一�
 - `lib/text.js` 的文本改动必须同步 `scripts/verify-checklist.sh` 的 F18 字符断言与 `docs/decisions/01-mechanism.md` 第 0 节表格。
 - `docs/` 不在 npm `files` 白名单内，改文档不影响打包产物；改 `README*`、`client.js`、`package.json`、`lib/`、`CHANGELOG.md` 会改变 pack 尺寸，需同步 `docs/发布说明.md` 与 `docs/实现说明.md` 里的实测值（R23 会硬断言）。新增/删除发包文件时还要同步 `scripts/verify-checklist.sh` 的 R1 期望集合。
 - 密钥、token、cookie 一律不写入仓库文件。
+- **README 的安装说明必须以 npm 源为首选，Git 源只能作为备选并标注差异。** 原因：宿主对 Git 源安装的更新检查走 `git ls-remote -- <repo> HEAD`（`dsh-plugin-manager/lib/types/github-connection.js:32`），commit 就是它的版本标识，所以插件页的「有新版本」会显示 commit SHA（如 `afaa2ac`）而不是 `0.3.6`。这无法从插件侧修正，只能靠安装方式规避。把两种源并列推荐，等于把这个困惑主动交给用户——0.3.6 之前就是这样写的，用户看到提示后才发现。
+  - 该条无自动门禁：R23 只校验尺寸数字，不解析 README 的推荐顺序。
+- **改 `docs/发布说明.md` 里的尺寸时，只改状态表和当前版本的对比表，不要动历史章节（如「21.4 版本与尺寸」）的旧数据。** 0.3.5 发布时用全局替换把 21.4 节里 0.3.4 的真实尺寸一并改掉了，制造了一处假记录；0.3.6 已修正。历史章节记的是当时的事实，不随新版本变。
+
