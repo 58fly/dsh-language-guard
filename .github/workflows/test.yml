@@ -53,6 +53,9 @@ jobs:
       - name: 真容器卸载验证
         run: node scripts/verify-dispose.mjs
 
+      - name: 宿主 API 兼容性（无桌面版 asar 时自动跳过）
+        run: node scripts/verify-host-api.mjs
+
       - name: 清单与打包元数据
         run: node scripts/verify-manifest.mjs
 

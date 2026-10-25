@@ -17,6 +17,28 @@
 
 ---
 
+## [0.3.5] - 2026-10-25
+
+### 新增
+
+- **宿主 API 兼容性自检**：新增 `scripts/verify-host-api.mjs`，直接解析 DSH 桌面版的
+  `app.asar`，逐条确认本插件依赖的 23 个宿主接口仍在、签名未变。dsh 升级后跑一次
+  就能知道哪些接口变了，不用再靠人工翻源码。未安装桌面版的环境（如 CI）自动跳过。
+
+### 变更
+
+- 适配 dsh `0.2.1-rc.3`：核对 `systemPrompt.section/context`、`settings.configure/describe`、
+  `commands.register`、`agent/pre-step`、客户端 `configForms`/`locale` 与两个 slot，
+  全部存在且签名未变，**无需改插件代码**。`engines.dsh` 仍为 `>=0.2.1-rc.2`。
+
+### 文档
+
+- 明确「本插件只用宿主已公开的注入通道，不注册 `system-prompt/assemble` 监听」这一边界在
+  rc.3 依然成立。
+
+
+---
+
 ## [0.3.4] - 2026-10-21
 
 ### 新增
@@ -168,7 +190,8 @@
 
 ---
 
-[未发布]: https://github.com/58fly/dsh-language-guard/compare/v0.3.4...HEAD
+[未发布]: https://github.com/58fly/dsh-language-guard/compare/v0.3.5...HEAD
+[0.3.5]: https://github.com/58fly/dsh-language-guard/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/58fly/dsh-language-guard/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/58fly/dsh-language-guard/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/58fly/dsh-language-guard/compare/v0.3.1...v0.3.2
