@@ -17,6 +17,20 @@
 
 ---
 
+## [0.3.6] - 2026-10-25
+
+### 文档
+
+- **安装说明改为优先推荐 npm 源，并说明 Git 源的更新提示差异。** 用 Git 源安装后，
+  插件页的「有新版本」会显示 commit SHA（如 `afaa2ac`）而不是版本号——宿主对 Git 源
+  的更新检查走 `git ls-remote HEAD`，commit 就是它的版本标识。这不是本插件能改的，
+  但此前 README 把两种安装方式并列列出，等于把这个困惑主动推荐给了用户。现在明确
+  标注「优先用 npm 源」，并在 Git 小节末尾提示该差异。
+- 安装说明里的固定版本示例从 `0.2.1` 更新到当前版本，文件数从 15 更正为 16。
+
+
+---
+
 ## [0.3.5] - 2026-10-25
 
 ### 新增
@@ -190,7 +204,8 @@
 
 ---
 
-[未发布]: https://github.com/58fly/dsh-language-guard/compare/v0.3.5...HEAD
+[未发布]: https://github.com/58fly/dsh-language-guard/compare/v0.3.6...HEAD
+[0.3.6]: https://github.com/58fly/dsh-language-guard/compare/v0.3.5...v0.3.6
 [0.3.5]: https://github.com/58fly/dsh-language-guard/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/58fly/dsh-language-guard/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/58fly/dsh-language-guard/compare/v0.3.2...v0.3.3

@@ -105,7 +105,9 @@ The opening section (head), verbatim, as it looks with the default `targetLangua
 
 ## Install
 
-This plugin is published to the **npm registry** ([`dsh-language-guard`](https://www.npmjs.com/package/dsh-language-guard)), and it can also be installed straight from its GitHub repository. Both routes deliver byte-identical content: the same 15 files.
+This plugin is published to the **npm registry** ([`dsh-language-guard`](https://www.npmjs.com/package/dsh-language-guard)), and it can also be installed straight from its GitHub repository. Both routes deliver byte-identical content: the same 16 files.
+
+> **Prefer the npm source.** Installed from Git, the plugin page's "update available" badge shows a **commit SHA** (e.g. `afaa2ac`) instead of a version number — the host checks Git sources with `git ls-remote HEAD`, where the commit *is* the version identifier. That is host behaviour, not something this plugin can change. To see a version like `0.3.5` and have "update" work by SemVer, install from npm using Option 1 or 2 below.
 
 **Option 1: the GUI (recommended)**
 
@@ -127,15 +129,17 @@ dsh plugin add dsh-language-guard
 **Pinned version** (recommended for teams and CI, so `latest` cannot drift under you):
 
 ```bash
-dsh plugin add dsh-language-guard@0.2.1
+dsh plugin add dsh-language-guard@0.3.5
 ```
 
 **From GitHub** (when npm is unreachable, or to pin by tag):
 
 ```bash
 dsh plugin add https://github.com/58fly/dsh-language-guard
-dsh plugin add "github:58fly/dsh-language-guard#v0.2.1"
+dsh plugin add "github:58fly/dsh-language-guard#v0.3.5"
 ```
+
+> Installing this way makes the "update available" badge show a commit SHA instead of a version number (see the note at the top of this section). Everything works; only the badge's readability suffers.
 
 **From a local directory** (to debug local changes; the path must be absolute):
 

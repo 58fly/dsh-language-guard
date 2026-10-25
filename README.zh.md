@@ -105,7 +105,9 @@ DSH 的 system prompt 由许多 section 拼装而成：身份、计划策略、�
 
 ## 安装
 
-本插件已发布到 **npm registry**（[`dsh-language-guard`](https://www.npmjs.com/package/dsh-language-guard)），也可以直接从 GitHub 仓库安装。两条路装出来的内容逐字节相同，都是 15 个文件。
+本插件已发布到 **npm registry**（[`dsh-language-guard`](https://www.npmjs.com/package/dsh-language-guard)），也可以直接从 GitHub 仓库安装。两条路装出来的内容逐字节相同，都是 16 个文件。
+
+> **优先用 npm 源。** 用 Git 源安装后，插件页的「有新版本」会显示一个 **commit SHA**（如 `afaa2ac`）而不是版本号——因为宿主对 Git 源的更新检查用的是 `git ls-remote HEAD`，commit 就是它的版本标识，这跟本插件无关，也无法从插件侧修正。想看到 `0.3.5` 这样的版本号并让「更新」按 SemVer 工作，请用下面方式一或方式二从 npm 安装。
 
 **方式一：图形界面（推荐）**
 
@@ -127,15 +129,17 @@ dsh plugin add dsh-language-guard
 **固定版本**（团队或 CI 推荐，不跟随 `latest` 漂移）：
 
 ```bash
-dsh plugin add dsh-language-guard@0.2.1
+dsh plugin add dsh-language-guard@0.3.5
 ```
 
 **从 GitHub 安装**（npm 不可达时，或用 tag 锁版本）：
 
 ```bash
 dsh plugin add https://github.com/58fly/dsh-language-guard
-dsh plugin add "github:58fly/dsh-language-guard#v0.2.1"
+dsh plugin add "github:58fly/dsh-language-guard#v0.3.5"
 ```
+
+> 用这一节装完后，「有新版本」提示会显示 commit SHA 而非版本号（见本节开头说明）。功能正常，只是更新提示的可读性差一些。
 
 **从本地目录安装**（调试本地改动，路径必须是绝对路径）：
 
