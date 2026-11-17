@@ -92,6 +92,11 @@ configured ? renderSlot("plugins.bundle.config", { view: "page" }, { entryKey: p
 | 4 | `preserveCodeTerms` | boolean | **switch**（`role="switch"` + `aria-checked`） | 保留代码与术语原文 | Keep code and technical terms verbatim | 变更即写 |
 | 5 | `extraRules` | string | **textarea**（3 行） | 附加约束 | Additional rules | 草稿 + 保存按钮 |
 | 6 | `overrideHead` | string | **textarea**（3 行，默认折叠） | 覆盖首段规则（高级） | Override the opening rules (advanced) | 草稿 + 保存按钮 |
+| 7 | `showQuickSwitch` | boolean | **switch**（`role="switch"` + `aria-checked`） | 允许显示快速切换控件 | Allow the quick switch control | 变更即写 |
+
+> 上表第 0 号字段是 `languageMode`（自动 / 手动 radio group，落点在**面板顶部**的 `ModeField`），
+> 因为它是模式开关而非普通字段，单列在 5.2 的模式小节里；`showQuickSwitch` 是 0.4.0 新增，
+> 控制侧栏底部那个快速切换控件是否渲染。两者都在 `01-mechanism.md` 4.1 的 schema 里。
 
 **为什么写入时机要分两类**（取舍）：
 
@@ -273,6 +278,8 @@ const zh = {
   'language.preset.ko': '한국어',
   'terms.label': '保留代码与术语原文',
   'terms.hint': '代码、命令、路径、标识符与英文报错保持原样，不翻译。',
+  'quickSwitch.label': '允许显示快速切换控件',
+  'quickSwitch.hint': '关闭后左下角侧栏底部不再显示语言切换控件；本面板里的语言设置照常生效。',
   'advanced.summary': '覆盖首段规则（高级）',
   'advanced.label': '首段规则全文',
   'advanced.hint': '留空则使用内置规则；填入后完全替换首段内置文本，「附加约束」仍会追加在其后。',
@@ -320,6 +327,8 @@ const en = {
   'language.preset.ko': '한국어',
   'terms.label': 'Keep code and technical terms verbatim',
   'terms.hint': 'Code, commands, paths, identifiers, and raw English error text stay untranslated.',
+  'quickSwitch.label': 'Allow the quick switch control',
+  'quickSwitch.hint': 'When off, the language switch is hidden from the sidebar footer; language settings in this panel still apply.',
   'advanced.summary': 'Override the opening rules (advanced)',
   'advanced.label': 'Opening rules text',
   'advanced.hint': 'Leave empty to use the built-in rules. When set, it replaces the built-in opening text entirely; Additional rules are still appended after it.',

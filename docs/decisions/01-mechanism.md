@@ -249,6 +249,11 @@ createUserMessage({
 import z from "@deepseek-ai/schemastery";
 
 export const Config = z.object({
+  languageMode: z.union([z.const(""), z.const("auto"), z.const("manual")])
+    .default("")
+    .description("语言模式。auto=跟随 DSH 界面语言；manual=固定用 targetLanguage；留空表示还没选过，按迁移规则推断。")
+    .volatile(),
+
   targetLanguage: z.string()
     .default("zh-CN")
     .pattern(/^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$/)
@@ -279,6 +284,11 @@ export const Config = z.object({
     .default("")
     .description("高级：完全替换首段内置规则文本。留空使用内置规则；非空时 extraRules 仍会追加在其后。")
     .volatile(),
+
+  showQuickSwitch: z.boolean()
+    .default(true)
+    .description("是否在侧栏底部（左下角）显示快速语言切换控件。默认显示；关闭后该控件不再渲染，设置面板里的语言设置照常可用。")
+    .volatile(),
 });
 ```
 
@@ -286,14 +296,16 @@ export const Config = z.object({
 
 | 字段 | 类型 | 默认 | 面板可改 | 作用 |
 |---|---|---|---|---|
+| `languageMode` | `"" \| "auto" \| "manual"` | `""` | 是 | 语言模式三态；空串是「还没选过」的哨兵，不能写成 `"auto"` |
 | `targetLanguage` | `string`（BCP-47 正则约束） | `"zh-CN"` | 是 | 目标语言；决定 `⟨LANG⟩` 与 `⟨CODE⟩` |
 | `strength` | `"B" \| "C" \| "D"` | `"C"` | 是 | 档位选择 |
 | `injectEveryNRounds` | `number`（3–50，整数） | `8` | 是 | D 档注入间隔（轮） |
 | `preserveCodeTerms` | `boolean` | `true` | 是 | 是否保留代码与英文术语原样 |
 | `extraRules` | `string` | `""` | 是 | 附加约束，追加在内置规则之后 |
 | `overrideHead` | `string` | `""` | 是 | 完全替换 head 内置文本（高级） |
+| `showQuickSwitch` | `boolean` | `true` | 是 | 是否在侧栏底部显示快速语言切换控件；关闭只是不渲染控件，不影响注入 |
 
-字段总数 **6**，全部 `.volatile()`，不新增其他字段（避免面板膨胀与实现分叉）。
+字段总数 **8**，全部 `.volatile()`，不新增其他字段（避免面板膨胀与实现分叉）。
 
 ### 4.3 关于「zod」
 

@@ -206,12 +206,12 @@ chk('C7 不 append 新 type 事件', () => {
   assert(!/session\.append\(/.test(hostCode), '不得 append 自定义 session 事件');
 });
 chk('C9 Config 全字段 volatile', () => {
-  // 0.2.0 起 7 个字段：新增 languageMode（语言模式三态）
-  const fields = ['languageMode', 'targetLanguage', 'strength', 'injectEveryNRounds', 'preserveCodeTerms', 'extraRules', 'overrideHead'];
+  // 0.2.0 起 7 个字段（languageMode 语言模式三态）；0.4.0 加 showQuickSwitch 到 8 个
+  const fields = ['languageMode', 'targetLanguage', 'strength', 'injectEveryNRounds', 'preserveCodeTerms', 'extraRules', 'overrideHead', 'showQuickSwitch'];
   for (const field of fields) assert(hostCode.includes(field), `Config 缺字段 ${field}`);
   // 只数「行首缩进 + .volatile(),」的字段级调用，注释里的说明文字不算
   const volatileCount = (hostCode.match(/^\s*\.volatile\(\),$/gm) || []).length;
-  assert(volatileCount === 7, `.volatile() 应出现 7 次（逐字段），实际 ${volatileCount} 次`);
+  assert(volatileCount === 8, `.volatile() 应出现 8 次（逐字段），实际 ${volatileCount} 次`);
   assert(!/z\.object\([\s\S]*\}\)\.volatile\(\)/.test(hostCode), 'volatile 不能加在根对象上');
 });
 chk('C10 不依赖第三方插件', () => {
@@ -313,6 +313,19 @@ chk('D11 注册两个 slot', () => {
 chk('D12 whileServed 守卫', () => {
   const count = (clientCode.match(/whileServed\(/g) || []).length;
   assert(count === 2, `两个 slot 都应包 whileServed，实际出现 ${count} 次`);
+});
+chk('D13 快速切换控件开关', () => {
+  // Host 侧：字段存在且默认显示（老用户升级后行为不变）
+  assert(/showQuickSwitch:\s*z\s*\n?\s*\.boolean\(\)/.test(hostCode), 'Config 必须有 showQuickSwitch: z.boolean()');
+  assert(/\.default\(true\)/.test(hostCode), 'showQuickSwitch 默认值必须是 true');
+  // Client 侧：设置卡片有开关，控件按开关早退
+  assert(/showQuickSwitch !== false/.test(clientCode), '设置卡片必须按 showQuickSwitch 渲染开关');
+  assert(/setField\(\s*'showQuickSwitch'/.test(clientCode), '开关必须能写回 showQuickSwitch');
+  assert(/quickSwitch\.label/.test(clientCode), '必须有 quickSwitch.label 文案');
+  assert(
+    /if \(values\.showQuickSwitch === false\) return null;/.test(clientCode),
+    'QuickLanguageSwitch 必须在开关关闭时不渲染',
+  );
 });
 
 // —— 四、发布相关 ——

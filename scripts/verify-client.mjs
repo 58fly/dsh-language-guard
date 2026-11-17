@@ -73,6 +73,7 @@ function loadClient() {
  */
 function makeCtx(services, served = true) {
   const registered = [];   // 注册过的槽名
+  const components = {};   // 槽名 → 组件函数（供行为断言直接调用）
   const effects = [];      // 登记过的 effect disposer
   const warnings = [];
   const slots = {
@@ -84,7 +85,9 @@ function makeCtx(services, served = true) {
     },
     register: (definition, component) => {
       assert.ok(component, `槽 ${JSON.stringify(definition)} 缺少组件`);
-      registered.push(definition?.name ?? definition);
+      const name = definition?.name ?? definition;
+      registered.push(name);
+      components[name] = component;
       return () => {};
     },
   };
@@ -114,6 +117,7 @@ function makeCtx(services, served = true) {
     };
   }
   ctx.__registered = registered;
+  ctx.__components = components;
   ctx.__effects = effects;
   ctx.__warnings = warnings;
   return ctx;
@@ -196,7 +200,78 @@ await chk('Host 未服务该命名空间（whileServed 不回调）：两个槽�
 });
 
 // ===========================================================================
-// 4. dispose 语义：effect 登记的回调在释放时被调用
+// 4. 快速切换控件受 showQuickSwitch 开关控制
+// ===========================================================================
+
+/** 造一个只读快照的假 form（组件只 getSnapshot + subscribe）。 */
+function makeForm(value) {
+  return {
+    getSnapshot: () => ({ status: 'ready', value, writable: true }),
+    subscribe: () => () => {},
+  };
+}
+
+/** 取出已注册的侧栏组件，按给定配置渲染一次。 */
+function renderQuickSwitch(value) {
+  const ctx = makeCtx({ configForms: {}, locale: { register: () => () => {} } });
+  mod.apply(ctx);
+  const component = ctx.__components['sidebar.footer.action'];
+  assert.equal(typeof component, 'function', 'sidebar.footer.action 必须注册组件函数');
+  return component({ form: makeForm(value), t: (key) => key, wide: true });
+}
+
+await chk('showQuickSwitch=false：侧栏控件不渲染（返回 null）', () => {
+  assert.equal(renderQuickSwitch({ showQuickSwitch: false, targetLanguage: 'en' }), null);
+});
+
+await chk('showQuickSwitch=true / 未设置：侧栏控件照常渲染', () => {
+  for (const value of [{ showQuickSwitch: true, targetLanguage: 'en' }, { targetLanguage: 'en' }]) {
+    const node = renderQuickSwitch(value);
+    assert.ok(node, `配置 ${JSON.stringify(value)} 下应渲染控件`);
+    assert.equal(node.props?.className, 'lg-root', '渲染根节点必须是 .lg-root');
+  }
+});
+
+/** 在渲染树里找 aria-labelledby 指向该 id 的开关按钮。 */
+function findSwitch(node, labelId) {
+  if (!node || typeof node !== 'object') return null;
+  const props = node.props || {};
+  if (props.role === 'switch' && props['aria-labelledby'] === labelId) return node;
+  for (const child of node.children || []) {
+    const hit = findSwitch(child, labelId);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+await chk('设置卡片有快速切换开关，且写回 showQuickSwitch', () => {
+  for (const [value, expected] of [[{ showQuickSwitch: false }, false], [{ showQuickSwitch: true }, true]]) {
+    const written = [];
+    const ctx = makeCtx({ configForms: {}, locale: { register: () => () => {} } });
+    mod.apply(ctx);
+    const card = ctx.__components['plugins.bundle.config'];
+    const node = card({
+      view: 'page',
+      form: makeForm(value),
+      configForms: {},
+      t: (key) => key,
+      onSet: (field, next) => { written.push([field, next]); return Promise.resolve(true); },
+      onUnset: () => Promise.resolve(true),
+    });
+    const toggle = findSwitch(node, 'lg-quickswitch-label');
+    assert.ok(toggle, `配置 ${JSON.stringify(value)} 下设置卡片必须有开关`);
+    assert.equal(toggle.props['aria-checked'], expected, 'aria-checked 必须反映 showQuickSwitch');
+    toggle.props.onClick();
+    assert.deepEqual(
+      written,
+      [['showQuickSwitch', !expected]],
+      '点击开关必须写回取反后的 showQuickSwitch',
+    );
+  }
+});
+
+// ===========================================================================
+// 5. dispose 语义：effect 登记的回调在释放时被调用
 // ===========================================================================
 
 await chk('dispose 后 effect disposer 全部被释放（不留监听）', () => {

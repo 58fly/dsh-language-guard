@@ -187,7 +187,7 @@ How to choose:
 
 ## Configuration
 
-Seven fields, all `volatile` (a change takes effect immediately — no restart, no plugin remount):
+Eight fields, all `volatile` (a change takes effect immediately — no restart, no plugin remount):
 
 | Field | Type | Default | Range | Description |
 | --- | --- | --- | --- | --- |
@@ -198,6 +198,7 @@ Seven fields, all `volatile` (a change takes effect immediately — no restart, 
 | `preserveCodeTerms` | `boolean` | `true` | `true` / `false` | `true`: code, commands, paths, identifiers, API fields and raw error text stay verbatim. `false`: technical terms are preferred in the target language, with the English term in parentheses when needed |
 | `extraRules` | `string` | `""` | any text | Appended after the built-in rules. Empty means built-in rules only |
 | `overrideHead` | `string` | `""` | any text | **Replaces** the built-in opening text entirely (`extraRules` is still appended after it). Empty or whitespace-only falls back to the built-in text |
+| `showQuickSwitch` | `boolean` | `true` | `true` / `false` | Whether the quick language switch appears at the bottom of the sidebar. When `false` the control is not rendered at all; the language settings in this panel keep working |
 
 The `targetLanguage` → display name mapping is fixed (no language guessing): `zh-CN` / `zh-Hans` / `zh-SG` → 简体中文, `zh-TW` / `zh-HK` / `zh-MO` / `zh-Hant` → 繁體中文, `en` / `en-US` / `en-GB` → English, `ja` / `ja-JP` → 日本語, `ko` / `ko-KR` → 한국어; any other valid tag is displayed as the code itself.
 
@@ -277,12 +278,17 @@ The card, top to bottom:
 5. **Keep code and technical terms verbatim** — a switch (`role="switch"` + `aria-checked`).
 6. **Additional rules** — a textarea with a local draft and Save / Discard changes.
 7. **Override the opening rules (advanced)** — collapsed by default. Editing it replaces the highest-priority constraint outright, so it stays out of the way.
+8. **Allow the quick switch control** — a switch (`role="switch"` + `aria-checked`). Turned off, the language button at the foot of the sidebar is not rendered at all; every setting in this panel keeps working.
 
 Every field has a "Reset to default" action (clears the user value back to the schema default).
 
 The saved state reads "Saved · no restart needed, applies to the next message". Level, switch and interval are written on change; text fields use a draft plus an explicit Save so that typing does not write to disk on every keystroke.
 
 ### Quick language switch
+
+This control takes a row at the foot of the sidebar. If you do not need it, turn off **Allow the quick
+switch control** (`showQuickSwitch`) in the settings card — the control is then not rendered at all.
+The language settings in that panel keep working either way.
 
 At the foot of the sidebar, next to Settings (the `sidebar.footer.action` slot, `id = "language-guard"`, `order = 100`):
 

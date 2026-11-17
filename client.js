@@ -220,6 +220,8 @@ window.__ModuleLoader__.load({
       'language.preset.ko': '한국어',
       'terms.label': '保留代码与术语原文',
       'terms.hint': '代码、命令、路径、标识符与英文报错保持原样，不翻译。',
+      'quickSwitch.label': '允许显示快速切换控件',
+      'quickSwitch.hint': '关闭后左下角侧栏底部不再显示语言切换控件；本面板里的语言设置照常生效。',
       'advanced.summary': '覆盖首段规则（高级）',
       'advanced.label': '首段规则全文',
       'advanced.hint': '留空则使用内置规则；填入后完全替换首段内置文本，「附加约束」仍会追加在其后。',
@@ -288,6 +290,8 @@ window.__ModuleLoader__.load({
       'language.preset.ko': '한국어',
       'terms.label': 'Keep code and technical terms verbatim',
       'terms.hint': 'Code, commands, paths, identifiers, and raw English error text stay untranslated.',
+      'quickSwitch.label': 'Allow the quick switch control',
+      'quickSwitch.hint': 'When off, the language switch is hidden from the sidebar footer; language settings in this panel still apply.',
       'advanced.summary': 'Override the opening rules (advanced)',
       'advanced.label': 'Opening rules text',
       'advanced.hint': 'Leave empty to use the built-in rules. When set, it replaces the built-in opening text entirely; Additional rules are still appended after it.',
@@ -824,6 +828,7 @@ window.__ModuleLoader__.load({
       const strength = values.strength === 'B' || values.strength === 'D' ? values.strength : 'C';
       const interval = typeof values.injectEveryNRounds === 'number' ? values.injectEveryNRounds : 8;
       const preserve = values.preserveCodeTerms !== false;
+      const showQuick = values.showQuickSwitch !== false;
       const language = typeof values.targetLanguage === 'string' ? values.targetLanguage : 'zh-CN';
 
       // —— 语言模式与自动解析（0.2.0）——
@@ -1071,6 +1076,39 @@ window.__ModuleLoader__.load({
 
         h(
           'div',
+          { className: 'lg-row' },
+          h(
+            'div',
+            { className: 'lg-field' },
+            h('span', { className: 'lg-label', id: 'lg-quickswitch-label' }, t('quickSwitch.label')),
+            h('p', { className: 'lg-hint' }, t('quickSwitch.hint')),
+          ),
+          h(
+            'div',
+            { className: 'lg-row' },
+            h(
+              'button',
+              {
+                type: 'button',
+                role: 'switch',
+                className: 'lg-switch',
+                'aria-checked': showQuick,
+                'aria-labelledby': 'lg-quickswitch-label',
+                disabled: readOnly,
+                onClick: () => setField('showQuickSwitch', !showQuick),
+              },
+              h('span', { className: 'lg-switch-thumb', 'aria-hidden': 'true' }),
+            ),
+            ResetButton({
+              disabled: readOnly,
+              t,
+              onClick: () => resetField('showQuickSwitch'),
+            }),
+          ),
+        ),
+
+        h(
+          'div',
           { className: 'lg-field' },
           h(
             'div',
@@ -1274,6 +1312,9 @@ window.__ModuleLoader__.load({
         setFocusIndex(next);
         focusItem(next);
       };
+
+      // 设置开关关掉时整个控件不渲染。放在所有 hook 之后，保持 hook 调用顺序稳定。
+      if (values.showQuickSwitch === false) return null;
 
       return h(
         'div',

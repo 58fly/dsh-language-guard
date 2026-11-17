@@ -187,7 +187,7 @@ dsh plugin add /absolute/path/to/dsh-language-guard
 
 ## 配置项
 
-七个字段，全部是 `volatile`（改动立即生效，不需要重启，也不重挂插件）：
+八个字段，全部是 `volatile`（改动立即生效，不需要重启，也不重挂插件）：
 
 | 字段 | 类型 | 默认值 | 取值范围 | 说明 |
 | --- | --- | --- | --- | --- |
@@ -198,6 +198,7 @@ dsh plugin add /absolute/path/to/dsh-language-guard
 | `preserveCodeTerms` | `boolean` | `true` | `true` / `false` | `true`：代码、命令、路径、标识符、API 字段与原始报错保持原样。`false`：技术名词优先用目标语言表达，必要时括号附英文 |
 | `extraRules` | `string` | `""` | 任意文本 | 追加在内置规则之后。留空表示只用内置规则 |
 | `overrideHead` | `string` | `""` | 任意文本 | **完全替换**内置首段文本（`extraRules` 仍会追加在其后）。留空或纯空白回退内置文本 |
+| `showQuickSwitch` | `boolean` | `true` | `true` / `false` | 是否在侧栏底部（左下角）显示快速语言切换控件。`false` 时该控件不再渲染，本面板里的语言设置照常生效 |
 
 `targetLanguage` 到语言显示名的映射是固定的（不做语言猜测）：`zh-CN` / `zh-Hans` / `zh-SG` → 简体中文，`zh-TW` / `zh-HK` / `zh-MO` / `zh-Hant` → 繁體中文，`en` / `en-US` / `en-GB` → English，`ja` / `ja-JP` → 日本語，`ko` / `ko-KR` → 한국어；其他合法标签直接显示代码本身。
 
@@ -277,12 +278,17 @@ dsh plugin add /absolute/path/to/dsh-language-guard
 5. **保留代码与术语原文**——开关（`role="switch"` + `aria-checked`）。
 6. **附加约束**——文本框，带本地草稿与「保存 / 放弃更改」。
 7. **覆盖首段规则（高级）**——默认折叠。改它等于整段替换最高优先级的约束，所以收起来。
+8. **允许显示快速切换控件**——开关（`role="switch"` + `aria-checked`）。关掉后侧栏底部那个语言按钮不再渲染，本面板的设置照常生效。
 
 每个字段都有「恢复默认」（清掉用户值，回到 schema 默认值）。
 
 保存态文案是「已保存 · 无需重启，下一条消息即生效」。档位、开关、间隔是变更即写；文本类字段走本地草稿 + 显式保存，避免每敲一个字都写一次盘。
 
 ### 快速语言切换
+
+这个控件占侧栏底部一格，不需要的人可以在设置页把「允许显示快速切换控件」（`showQuickSwitch`）
+关掉——关掉后控件完全不渲染，设置面板里的语言设置照常可用，
+注入行为也不受任何影响。
 
 在侧栏底部、设置按钮旁边（`sidebar.footer.action` slot，`id = "language-guard"`，`order = 100`）：
 

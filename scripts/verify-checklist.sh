@@ -46,6 +46,17 @@ npm_cache="${TMPDIR:-/tmp}/dsh-lg-npm-cache.$$"
 pack_tmp="${TMPDIR:-/tmp}/dsh-lg-pack.$$"
 m_tmp="${TMPDIR:-/tmp}/dsh-lg-mode.$$"
 
+# PyYAML 只在 A8 / C9 / E1 三条里用来解析 cordis.patch.yml。
+# PATH 上的 python3 未必带 PyYAML（本机 homebrew python3.15 就没有，而 /usr/bin/python3 自带），
+# 所以挑第一个能 import yaml 的解释器；全都不能就退回 python3，让判据如实失败。
+py="python3"
+for cand in python3 /usr/bin/python3 python3.12 python3.11; do
+  if command -v "$cand" >/dev/null 2>&1 && "$cand" -c 'import yaml' >/dev/null 2>&1; then
+    py="$cand"
+    break
+  fi
+done
+
 cleanup() {
   if [ -n "${stub_dirs}" ]; then
     for d in ${stub_dirs}; do rm -rf "$d"; done
@@ -218,7 +229,7 @@ fi
 # A9：仓库里不得存在直接写 profile 目录的脚本（安装一律走 install_bundle / dsh plugin add）。
 # 必须排除本脚本自身——它含这些字面量（用来搜别人），不排除就会命中自己造成自指假阳性。
 chk A9 "! grep -rnE --exclude=verify-checklist.sh 'DSH_HOME|profiles/[A-Za-z0-9_-]*/cordis\\.patch|profiles/.*/node_modules' scripts lib client.js 2>/dev/null | grep -vE ':[0-9]+:[[:space:]]*(\\*|//|/\\*)' | grep -q ."
-chk A8 "python3 -c \"import yaml,sys;d=yaml.safe_load(open('cordis.patch.yml'));r=d[0]['insert'];sys.exit(0 if len(r)==1 and r[0].get('id')=='dsh-language-guard' else 1)\""
+chk A8 "${py} -c \"import yaml,sys;d=yaml.safe_load(open('cordis.patch.yml'));r=d[0]['insert'];sys.exit(0 if len(r)==1 and r[0].get('id')=='dsh-language-guard' else 1)\""
 
 # ---- B. locale 与 icon ------------------------------------------------------
 chk B1 "node -e \"const m=require('./locale/en.json');process.exit(m.meta&&m.meta.title&&m.meta.description&&String(m.meta.title).length>=4&&String(m.meta.description).length>=4?0:1)\""
@@ -254,7 +265,7 @@ run_lib C8 "! hits 'setInterval' ${hostdir} || hits 'clearInterval' ${hostdir}"
 
 # C9：只数字段级调用（行首缩进 + `.volatile(),`），不把注释里的说明文字算进去。
 # 两段都显式打印实际值：CI 上这条曾静默失败（无任何输出），排查时连是哪一段红的都看不出来。
-run_host C9 "c=\$(hits_n '^[[:space:]]*\.volatile\(\),' ${host}); [ \"\$c\" -eq 7 ] || { echo \"volatile 字段级调用数=\$c（期望 7）\"; exit 1; }; python3 -c \"import yaml,sys;r=yaml.safe_load(open('cordis.patch.yml'))[0]['insert'][0];ok=set(r)=={'id','name'};print('insert 键=',sorted(r)) if not ok else None;sys.exit(0 if ok else 1)\""
+run_host C9 "c=\$(hits_n '^[[:space:]]*\.volatile\(\),' ${host}); [ \"\$c\" -eq 8 ] || { echo \"volatile 字段级调用数=\$c（期望 8）\"; exit 1; }; \${py} -c \"import yaml,sys;r=yaml.safe_load(open('cordis.patch.yml'))[0]['insert'][0];ok=set(r)=={'id','name'};print('insert 键=',sorted(r)) if not ok else None;sys.exit(0 if ok else 1)\""
 
 run_lib C10 "! hits 'appendPluginRecord|session\.append' ${hostdir}"
 run_both C11 "! hits 'querySelector|innerHTML' ${hostdir} ${client}"
@@ -292,7 +303,7 @@ run_client D13 "grep -q 'dsh-context' ${client} && grep -q 'dsh-context' locale/
 # E1：JS 语法与 manifest 校验先于安装完成。node --check 在 type=module 的包里按 ESM 解析，
 # 不需要 peer 依赖即可验语法，因此不受 A2/C1 的 stub 影响。
 if [ "${host_ok}" = 1 ] && [ "${client_ok}" = 1 ]; then
-  chk E1 "node --check ${host} && node --check ${client} && node -e \"JSON.parse(require('fs').readFileSync('${pkg}','utf8'))\" && python3 -c \"import yaml;yaml.safe_load(open('cordis.patch.yml'))\""
+  chk E1 "node --check ${host} && node --check ${client} && node -e \"JSON.parse(require('fs').readFileSync('${pkg}','utf8'))\" && ${py} -c \"import yaml;yaml.safe_load(open('cordis.patch.yml'))\""
 else
   todo E1 "缺少 ${host} 或 ${client}"
 fi
@@ -313,6 +324,18 @@ if [ -f lib/text.js ]; then
   chk F19 "grep -q 'AGENTS.md' lib/text.js && grep -q 'AGENTS.md' README.md && grep -q 'AGENTS.md' README.zh.md && grep -q 'AGENTS.md' docs/decisions/01-mechanism.md"
 else
   todo F19 "缺少 lib/text.js"
+fi
+
+# F20：侧栏底部快速切换控件可被设置开关关掉（0.4.0）。
+# 判据要同时锁三处：Host 字段存在且默认 true、设置卡片有开关、控件按开关早退。
+# 只查「字段存在」会漏掉「控件根本不看这个字段」——那正是最容易发生的半截实现。
+if [ "${host_ok}" = 1 ] && [ "${client_ok}" = 1 ]; then
+  chk F20 "hits 'showQuickSwitch: z' ${hostdir} \
+  && grep -q 'showQuickSwitch !== false' ${client} \
+  && grep -q \"setField('showQuickSwitch'\" ${client} \
+  && grep -q 'if (values.showQuickSwitch === false) return null;' ${client}"
+else
+  todo F20 "缺少 Host 或 Client 入口"
 fi
 
 # F3：三档为原生 radio group，三档说明并列常驻（非 select、非 tooltip）。
